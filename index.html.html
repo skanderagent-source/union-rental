@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Union Rental — Appartements à louer à Montréal et environs. Trouvez votre logement idéal.">
+<meta name="theme-color" content="#0a0a0a">
+<title>Union Rental — Appartements à louer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--bg4:#282828;
+  --text:#ffffff;--text2:#a0a0a0;--text3:#606060;
+  --border:#2a2a2a;--border2:#333;
+  --accent:#c8a96e;--accent2:#b8944a;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;
+  --radius:16px;--radius-sm:10px;
+}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,10,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{font-size:18px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
+.nav-logo span{color:var(--accent)}
+.nav-cta{padding:8px 18px;background:var(--accent);color:#000;font-size:13px;font-weight:700;border-radius:20px;border:none;cursor:pointer;text-decoration:none}
+.nav-cta:hover{background:var(--accent2)}
+
+/* HERO */
+.hero{padding:120px 24px 60px;max-width:1100px;margin:0 auto;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--accent);font-weight:600;margin-bottom:24px;letter-spacing:.5px}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:block}
+.hero h1{font-size:clamp(36px,6vw,64px);font-weight:900;line-height:1.08;letter-spacing:-1.5px;margin-bottom:20px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:18px;color:var(--text2);max-width:560px;margin:0 auto 36px;line-height:1.6}
+.hero-stats{display:flex;gap:40px;justify-content:center;margin-top:48px;flex-wrap:wrap}
+.hero-stat{text-align:center}
+.hero-stat .num{font-size:32px;font-weight:800;color:var(--accent)}
+.hero-stat .lbl{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* SEARCH SECTION */
+.search-section{max-width:1100px;margin:0 auto;padding:0 24px 60px}
+.search-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px}
+.search-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end}
+@media(max-width:768px){.search-grid{grid-template-columns:1fr 1fr;}.search-grid .search-full{grid-column:1/-1}}
+.search-field label{font-size:12px;color:var(--text2);display:block;margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.search-field input,.search-field select{width:100%;padding:11px 14px;font-size:14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);outline:none;-webkit-appearance:none}
+.search-field input:focus,.search-field select:focus{border-color:var(--accent)}
+.search-field input::placeholder{color:var(--text3)}
+.btn-search{padding:11px 24px;background:var(--accent);color:#000;font-size:14px;font-weight:700;border:none;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap}
+.btn-search:hover{background:var(--accent2)}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin:24px 0 16px;flex-wrap:gap}
+.results-count{font-size:15px;color:var(--text2)}
+.results-count strong{color:var(--text)}
+.view-toggle{display:flex;gap:4px}
+.view-btn{padding:7px 12px;font-size:13px;border:1px solid var(--border2);border-radius:6px;background:none;color:var(--text2);cursor:pointer}
+.view-btn.active{background:var(--bg3);color:var(--text);border-color:var(--border2)}
+
+/* LISTINGS GRID */
+.listings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.listing-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s}
+.listing-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.listing-photo{height:180px;background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.listing-photo-placeholder{font-size:40px;opacity:.3}
+.listing-photo img{width:100%;height:100%;object-fit:cover}
+.listing-badge{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-available{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.badge-hold{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.listing-source{position:absolute;top:10px;right:10px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(0,0,0,.6);color:var(--text2)}
+.listing-body{padding:16px}
+.listing-area{font-size:12px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.listing-addr{font-size:15px;font-weight:600;line-height:1.3;margin-bottom:10px;color:var(--text)}
+.listing-meta{display:flex;gap:12px;font-size:13px;color:var(--text2);margin-bottom:12px;flex-wrap:wrap}
+.listing-price{font-size:22px;font-weight:800;color:var(--text)}
+.listing-price span{font-size:13px;font-weight:400;color:var(--text2)}
+.listing-notes{font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5;padding-top:8px;border-top:1px solid var(--border)}
+.btn-contact{width:100%;padding:10px;margin-top:12px;background:var(--accent);color:#000;font-size:13px;font-weight:700;border:none;border-radius:var(--radius-sm);cursor:pointer}
+.btn-contact:hover{background:var(--accent2)}
+
+/* MAP VIEW */
+#map-view{display:none}
+#map-view.active{display:block}
+#listings-map{height:520px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:28px}
+.modal-title{font-size:20px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.5}
+.form-tabs{display:flex;gap:8px;margin-bottom:24px}
+.form-tab{flex:1;padding:10px;font-size:13px;font-weight:600;border:1px solid var(--border2);border-radius:var(--radius-sm);background:none;color:var(--text2);cursor:pointer;text-align:center}
+.form-tab.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.form-section{display:none}
+.form-section.active{display:block}
+.field{margin-bottom:14px}
+.field label{font-size:12px;color:var(--text2);display:block;margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select,.field textarea{width:100%;padding:11px 14px;font-size:14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);outline:none;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:none;min-height:80px;line-height:1.5}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.required-note{font-size:12px;color:var(--text3);margin-bottom:16px}
+.btn-submit{width:100%;padding:14px;background:var(--accent);color:#000;font-size:15px;font-weight:800;border:none;border-radius:var(--radius-sm);cursor:pointer;letter-spacing:.3px}
+.btn-submit:hover{background:var(--accent2)}
+.btn-submit:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed}
+.modal-close{float:right;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:4px;line-height:1}
+.success-screen{text-align:center;padding:20px 0}
+.success-icon{font-size:56px;margin-bottom:16px}
+.success-title{font-size:20px;font-weight:800;margin-bottom:8px}
+.success-msg{font-size:14px;color:var(--text2);line-height:1.6}
+
+/* DISCLAIMER */
+.disclaimer{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 16px;margin-top:16px;font-size:12px;color:var(--text2);line-height:1.6}
+.disclaimer strong{color:var(--accent)}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:32px 24px;text-align:center;margin-top:80px}
+.footer-logo{font-size:20px;font-weight:800;margin-bottom:8px}
+.footer-logo span{color:var(--accent)}
+.footer-sub{font-size:13px;color:var(--text2)}
+
+/* EMPTY / LOADING */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.loading-dots{display:flex;gap:6px;justify-content:center;padding:60px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:bounce .8s infinite}
+.dot:nth-child(2){animation-delay:.15s}
+.dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:12px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+
+@media(max-width:600px){
+  .hero h1{font-size:36px}
+  .hero-stats{gap:24px}
+  .listings-grid{grid-template-columns:1fr}
+  .field-row{grid-template-columns:1fr}
+  nav{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Union<span>Rental</span></div>
+  <a href="#listings" class="nav-cta" onclick="openContact(null)">Nous contacter</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">Logements disponibles maintenant</div>
+  <h1>Trouvez votre<br>appartement idéal<br>à <em>Montréal</em></h1>
+  <p>Des centaines de logements disponibles à Montréal et environs. Filtrez, explorez, et contactez-nous en quelques secondes.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="#listings" class="nav-cta" style="padding:14px 28px;font-size:15px;border-radius:12px">Voir les logements</a>
+    <button onclick="openContact(null)" style="padding:14px 28px;font-size:15px;font-weight:700;border:1px solid var(--border2);border-radius:12px;background:none;color:var(--text);cursor:pointer">Nous contacter</button>
+  </div>
+  <div class="hero-stats" id="hero-stats">
+    <div class="hero-stat"><div class="num" id="stat-total">—</div><div class="lbl">Logements</div></div>
+    <div class="hero-stat"><div class="num" id="stat-dispo">—</div><div class="lbl">Disponibles</div></div>
+    <div class="hero-stat"><div class="num" id="stat-areas">—</div><div class="lbl">Quartiers</div></div>
+    <div class="hero-stat"><div class="num">600+</div><div class="lbl">Score crédit min.</div></div>
+  </div>
+</section>
+
+<section class="search-section" id="listings">
+  <div class="search-box">
+    <div class="search-grid">
+      <div class="search-field search-full">
+        <label>Recherche</label>
+        <input type="text" id="q" placeholder="Adresse, quartier..." oninput="filterListings()">
+      </div>
+      <div class="search-field">
+        <label>Quartier</label>
+        <select id="f-area" onchange="filterListings()"><option value="">Tous</option></select>
+      </div>
+      <div class="search-field">
+        <label>Taille</label>
+        <select id="f-size" onchange="filterListings()">
+          <option value="">Toutes</option>
+          <option value="2.5">2.5 pièces</option>
+          <option value="3.5">3.5 pièces</option>
+          <option value="4.5">4.5 pièces</option>
+          <option value="5.5">5.5 pièces</option>
+          <option value="6.5">6.5+ pièces</option>
+        </select>
+      </div>
+      <div class="search-field">
+        <label>Prix max</label>
+        <select id="f-price" onchange="filterListings()">
+          <option value="">Tous</option>
+          <option value="1000">1 000 $</option>
+          <option value="1200">1 200 $</option>
+          <option value="1500">1 500 $</option>
+          <option value="2000">2 000 $</option>
+          <option value="2500">2 500 $</option>
+          <option value="3000">3 000 $+</option>
+        </select>
+      </div>
+      <div class="search-field">
+        <button class="btn-search" onclick="filterListings()">Rechercher</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-header">
+    <div class="results-count" id="results-count">Chargement...</div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-grid" onclick="setView('grid')">⊞ Grille</button>
+      <button class="view-btn" id="btn-map" onclick="setView('map')">🗺 Carte</button>
+    </div>
+  </div>
+
+  <div id="grid-view">
+    <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+
+  <div id="map-view">
+    <div id="listings-map"></div>
+  </div>
+</section>
+
+<!-- DISCLAIMER -->
+<div style="max-width:1100px;margin:0 auto;padding:0 24px">
+  <div class="disclaimer">
+    <strong>⚠️ Processus de location</strong> — Une vérification de crédit via SingleKey (600+ minimum) ainsi qu'une preuve de revenu stable (2.5x le loyer) sont requises. Aucune adresse n'est communiquée avant la vérification. Dossier traité du lundi au vendredi.
+  </div>
+</div>
+
+<!-- MODAL CONTACT -->
+<div class="modal-overlay" id="modal-contact">
+  <div class="modal">
+    <button class="modal-close" onclick="closeContact()">✕</button>
+    <div id="contact-form-wrap">
+      <div class="modal-title">Nous contacter</div>
+      <div class="modal-sub" id="contact-apt-info">Intéressé(e) par un de nos logements ? Choisissez comment vous souhaitez procéder.</div>
+
+      <div class="form-tabs">
+        <button class="form-tab active" id="tab-rappel" onclick="switchForm('rappel')">📞 Rappel rapide</button>
+        <button class="form-tab" id="tab-prequal" onclick="switchForm('prequal')">📋 Préqualification</button>
+      </div>
+
+      <!-- RAPPEL RAPIDE -->
+      <div class="form-section active" id="form-rappel">
+        <div class="required-note">Nous vous rappellerons dans les 24h (lun-ven).</div>
+        <div class="field"><label>Nom complet *</label><input type="text" id="r-nom" placeholder="Jean Tremblay"></div>
+        <div class="field-row">
+          <div class="field"><label>Téléphone *</label><input type="tel" id="r-tel" placeholder="514-555-0000"></div>
+          <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="jean@email.com"></div>
+        </div>
+        <div class="field"><label>Message (optionnel)</label><textarea id="r-msg" placeholder="Dispo à partir du 1er juillet, budget 1 200$..."></textarea></div>
+        <button class="btn-submit" onclick="submitRappel()">Demander un rappel →</button>
+      </div>
+
+      <!-- PRÉQUALIFICATION -->
+      <div class="form-section" id="form-prequal">
+        <div class="required-note">Répondez à quelques questions pour accélérer le processus.</div>
+        <div class="field"><label>Nom complet *</label><input type="text" id="p-nom" placeholder="Jean Tremblay"></div>
+        <div class="field-row">
+          <div class="field"><label>Téléphone *</label><input type="tel" id="p-tel" placeholder="514-555-0000"></div>
+          <div class="field"><label>Email *</label><input type="email" id="p-email" placeholder="jean@email.com"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Revenu mensuel net *</label><input type="number" id="p-revenu" placeholder="3500"></div>
+          <div class="field"><label>Score de crédit estimé *</label>
+            <select id="p-credit">
+              <option value="">Sélectionner</option>
+              <option value="750+">750+ (Excellent)</option>
+              <option value="700-749">700-749 (Très bon)</option>
+              <option value="650-699">650-699 (Bon)</option>
+              <option value="600-649">600-649 (Acceptable)</option>
+              <option value="Moins de 600">Moins de 600</option>
+              <option value="Pas de dossier">Pas de dossier de crédit</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Dossier au TAL ?</label>
+            <select id="p-tal">
+              <option value="false">Non</option>
+              <option value="true">Oui</option>
+            </select>
+          </div>
+          <div class="field"><label>Date de déménagement</label><input type="text" id="p-date" placeholder="1er juillet 2025"></div>
+        </div>
+        <div class="field"><label>Message (optionnel)</label><textarea id="p-msg" placeholder="Nouveau arrivant, famille de 3..."></textarea></div>
+        <button class="btn-submit" onclick="submitPrequal()">Envoyer ma demande →</button>
+      </div>
+    </div>
+
+    <div id="contact-success" style="display:none">
+      <div class="success-screen">
+        <div class="success-icon">✅</div>
+        <div class="success-title">Demande reçue !</div>
+        <div class="success-msg">Nous avons bien reçu votre demande.<br>Un agent vous contactera dans les 24 heures (lun-ven).<br><br>Merci de votre intérêt pour Union Rental.</div>
+        <button onclick="closeContact()" style="margin-top:20px;padding:12px 28px;background:var(--accent);color:#000;font-size:14px;font-weight:700;border:none;border-radius:var(--radius-sm);cursor:pointer">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">Union<span>Rental</span></div>
+  <div class="footer-sub" style="margin-top:8px">Appartements à louer à Montréal et environs</div>
+  <div class="footer-sub" style="margin-top:4px;font-size:11px;color:var(--text3)">Score crédit minimum 600 · Revenu 2.5x le loyer · Vérification SingleKey</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://twkqsaupojldddclgpqj.supabase.co';
+const SUPA_KEY = 'sb_publishable_WWD_ElQ6L91qFmywBVN14A_5SSSmJZU';
+const HEADERS = {'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY};
+
+let DATA = [], filtered = [], currentAptId = null, leafMap = null, mapReady = false;
+
+async function init() {
+  try {
+    const r = await fetch(SUPA_URL+'/rest/v1/logements?select=*&statut=eq.Available&order=adresse.asc&limit=1000', {headers: HEADERS});
+    if(!r.ok) throw new Error();
+    DATA = await r.json();
+    filtered = [...DATA];
+    populateAreas();
+    renderListings();
+    updateHeroStats();
+  } catch(e) {
+    document.getElementById('grid-view').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Erreur de chargement</div></div>';
+  }
+}
+
+function updateHeroStats() {
+  document.getElementById('stat-total').textContent = DATA.length;
+  document.getElementById('stat-dispo').textContent = DATA.filter(d=>d.statut==='Available').length;
+  document.getElementById('stat-areas').textContent = new Set(DATA.map(d=>d.quartier).filter(Boolean)).size;
+}
+
+function populateAreas() {
+  const sel = document.getElementById('f-area');
+  const areas = [...new Set(DATA.map(d=>d.quartier).filter(Boolean))].sort();
+  areas.forEach(a => { const o=document.createElement('option'); o.value=a; o.textContent=a; sel.appendChild(o); });
+}
+
+function filterListings() {
+  const q = (document.getElementById('q').value||'').toLowerCase();
+  const area = document.getElementById('f-area').value;
+  const size = document.getElementById('f-size').value;
+  const price = parseFloat(document.getElementById('f-price').value)||999999;
+  filtered = DATA.filter(d => {
+    if(q && !(d.adresse||'').toLowerCase().includes(q) && !(d.quartier||'').toLowerCase().includes(q)) return false;
+    if(area && d.quartier !== area) return false;
+    if(size && String(d.taille) !== size) return false;
+    if(d.prix && parseFloat(d.prix) > price) return false;
+    return true;
+  });
+  renderListings();
+  if(mapReady) updateMapMarkers();
+}
+
+function renderListings() {
+  const el = document.getElementById('grid-view');
+  document.getElementById('results-count').innerHTML = `<strong>${filtered.length}</strong> logement${filtered.length>1?'s':''} trouvé${filtered.length>1?'s':''}`;
+  if(!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏠</div><div>Aucun logement ne correspond à votre recherche</div></div>';
+    return;
+  }
+  el.innerHTML = '<div class="listings-grid">'+filtered.map(d => {
+    const prix = d.prix ? parseFloat(d.prix).toLocaleString('fr-CA') : null;
+    const sm = {'2.5':'2½','3.5':'3½','4.5':'4½','5.5':'5½','6.5':'6½','7.5':'7½'};
+    return `<div class="listing-card" onclick="openContact('${d.id}')">
+      <div class="listing-photo">
+        <div class="listing-photo-placeholder">🏠</div>
+        <span class="listing-badge badge-available">Disponible</span>
+        <span class="listing-source">${d.source||'—'}</span>
+      </div>
+      <div class="listing-body">
+        <div class="listing-area">${d.quartier||'Montréal'}</div>
+        <div class="listing-addr">${d.adresse}</div>
+        <div class="listing-meta">
+          ${d.taille?`<span>📐 ${sm[d.taille]||d.taille} pièces</span>`:''}
+          ${d.electromenagers?`<span>🍳 ${d.electromenagers}</span>`:''}
+        </div>
+        <div class="listing-price">${prix?prix+' $<span>/mois</span>':'Prix sur demande'}</div>
+        ${d.notes?`<div class="listing-notes">${d.notes}</div>`:''}
+        <button class="btn-contact">Je suis intéressé(e) →</button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+const QC = {
+  'rosemont':[45.540,-73.580],'plateau-mont-royal':[45.525,-73.578],
+  'côte-des-neiges':[45.488,-73.626],'cote-des-neiges':[45.488,-73.626],
+  'st-michel':[45.578,-73.600],'saint-michel':[45.578,-73.600],
+  'ahuntsic-cartierville':[45.556,-73.666],'ahuntsic':[45.558,-73.646],
+  'outremont':[45.527,-73.609],'villeray':[45.550,-73.607],
+  'hochelaga-maisonneuve':[45.547,-73.543],'hochelaga':[45.548,-73.544],
+  'parc-extension':[45.528,-73.638],'parc ex':[45.528,-73.638],
+  'st-laurent':[45.506,-73.704],'saint-laurent':[45.506,-73.704],
+  'laval':[45.570,-73.790],'longueuil':[45.520,-73.472],
+  'ville-marie':[45.518,-73.568],'montréal-nord':[45.590,-73.635],
+  'lachine':[45.432,-73.673],'lasalle':[45.427,-73.632],
+  'verdun':[45.460,-73.573],'sud-ouest':[45.474,-73.600],
+  'westmount':[45.487,-73.590],'dorval':[45.398,-73.762],
+  'pointe-aux-trembles':[45.653,-73.494],'anjou':[45.606,-73.558],
+  'montréal-est':[45.622,-73.505],'gatineau':[45.422,-75.718],
+  'boisbriand':[45.618,-73.836],'saint-eustache':[45.566,-73.902],
+  'deux-montagnes':[45.552,-74.008],'châteauguay':[45.382,-73.742],
+  'greenfield park':[45.486,-73.478],'dollard-des-ormeaux':[45.478,-73.824],
+  'pierrefonds':[45.497,-73.852],'trois-rivières':[46.344,-72.546],
+  'viauville':[45.556,-73.548],'st-jérôme':[45.782,-74.002],
+};
+
+function setView(v) {
+  document.getElementById('grid-view').style.display = v==='grid'?'block':'none';
+  document.getElementById('map-view').className = v==='map'?'active':'';
+  document.getElementById('btn-grid').className = 'view-btn'+(v==='grid'?' active':'');
+  document.getElementById('btn-map').className = 'view-btn'+(v==='map'?' active':'');
+  if(v==='map') setTimeout(initMap, 100);
+}
+
+function initMap() {
+  if(!leafMap) {
+    leafMap = L.map('listings-map',{preferCanvas:true}).setView([45.52,-73.60],11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18,subdomains:['a','b','c']}).addTo(leafMap);
+  }
+  updateMapMarkers();
+  setTimeout(()=>leafMap.invalidateSize(),200);
+  mapReady = true;
+}
+
+function updateMapMarkers() {
+  if(!leafMap) return;
+  leafMap.eachLayer(l=>{if(l instanceof L.CircleMarker) leafMap.removeLayer(l);});
+  filtered.forEach(d=>{
+    let coords = null;
+    if(d.latitude&&d.longitude) coords=[parseFloat(d.latitude),parseFloat(d.longitude)];
+    else { const q=(d.quartier||'').toLowerCase().trim(); coords=QC[q]||null; }
+    if(!coords) return;
+    const jx=(Math.random()-.5)*.008, jy=(Math.random()-.5)*.008;
+    const prix = d.prix?parseFloat(d.prix).toLocaleString('fr-CA')+'$/mois':'Prix sur demande';
+    L.circleMarker([coords[0]+jx,coords[1]+jy],{radius:8,fillColor:'#c8a96e',color:'#fff',weight:2,opacity:1,fillOpacity:.9})
+     .addTo(leafMap)
+     .bindPopup(`<b style="font-size:13px">${d.adresse}</b><br><small style="color:#666">${d.quartier||''}</small><br><b style="color:#c8a96e">${prix}</b><br><button onclick="openContact('${d.id}')" style="margin-top:6px;padding:5px 12px;background:#c8a96e;color:#000;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Je suis intéressé(e)</button>`,{maxWidth:220});
+  });
+}
+
+function openContact(aptId) {
+  currentAptId = aptId;
+  const apt = aptId ? DATA.find(d=>d.id===aptId) : null;
+  document.getElementById('contact-apt-info').textContent = apt
+    ? `Logement sélectionné : ${apt.adresse}${apt.prix?' — '+parseFloat(apt.prix).toLocaleString('fr-CA')+'$/mois':''}`
+    : 'Intéressé(e) par un de nos logements ? Choisissez comment vous souhaitez procéder.';
+  document.getElementById('contact-form-wrap').style.display = 'block';
+  document.getElementById('contact-success').style.display = 'none';
+  document.getElementById('modal-contact').classList.add('open');
+}
+
+function closeContact() {
+  document.getElementById('modal-contact').classList.remove('open');
+}
+
+function switchForm(type) {
+  document.querySelectorAll('.form-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.form-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+type).classList.add('active');
+  document.getElementById('form-'+type).classList.add('active');
+}
+
+async function submitRappel() {
+  const nom = document.getElementById('r-nom').value.trim();
+  const tel = document.getElementById('r-tel').value.trim();
+  if(!nom||!tel){showToast('⚠️ Nom et téléphone requis');return;}
+  const btn = document.querySelector('#form-rappel .btn-submit');
+  btn.disabled = true; btn.textContent = 'Envoi en cours...';
+  try {
+    const apt = currentAptId ? DATA.find(d=>d.id===currentAptId) : null;
+    const data = {
+      type_demande: 'rappel',
+      logement_id: currentAptId||null,
+      nom, telephone: tel,
+      email: document.getElementById('r-email').value.trim()||null,
+      message: (apt?'Logement: '+apt.adresse+'\n':'')+document.getElementById('r-msg').value.trim()||null,
+    };
+    const r = await fetch(SUPA_URL+'/rest/v1/demandes_clients', {
+      method:'POST',
+      headers:{...HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(data)
+    });
+    if(!r.ok) throw new Error();
+    document.getElementById('contact-form-wrap').style.display='none';
+    document.getElementById('contact-success').style.display='block';
+  } catch(e){
+    showToast('❌ Erreur — réessaie');
+    btn.disabled=false; btn.textContent='Demander un rappel →';
+  }
+}
+
+async function submitPrequal() {
+  const nom = document.getElementById('p-nom').value.trim();
+  const tel = document.getElementById('p-tel').value.trim();
+  const email = document.getElementById('p-email').value.trim();
+  const revenu = document.getElementById('p-revenu').value;
+  const credit = document.getElementById('p-credit').value;
+  if(!nom||!tel||!email||!revenu||!credit){showToast('⚠️ Remplis tous les champs obligatoires');return;}
+  const btn = document.querySelector('#form-prequal .btn-submit');
+  btn.disabled=true; btn.textContent='Envoi en cours...';
+  try {
+    const apt = currentAptId ? DATA.find(d=>d.id===currentAptId) : null;
+    const data = {
+      type_demande:'prequal',
+      logement_id:currentAptId||null,
+      nom, telephone:tel, email,
+      revenu_mensuel:parseInt(revenu)||null,
+      score_credit:credit,
+      dossier_tal:document.getElementById('p-tal').value==='true',
+      date_demenagement:document.getElementById('p-date').value.trim()||null,
+      message:(apt?'Logement: '+apt.adresse+'\n':'')+document.getElementById('p-msg').value.trim()||null,
+    };
+    const r = await fetch(SUPA_URL+'/rest/v1/demandes_clients', {
+      method:'POST',
+      headers:{...HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(data)
+    });
+    if(!r.ok) throw new Error();
+    document.getElementById('contact-form-wrap').style.display='none';
+    document.getElementById('contact-success').style.display='block';
+  } catch(e){
+    showToast('❌ Erreur — réessaie');
+    btn.disabled=false; btn.textContent='Envoyer ma demande →';
+  }
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+document.getElementById('modal-contact').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal-contact')) closeContact();
+});
+
+init();
+</script>
+</body>
+</html>
