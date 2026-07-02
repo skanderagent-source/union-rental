@@ -999,6 +999,37 @@ const observer=new IntersectionObserver((entries)=>{
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
 
 // DATA
+// ========== ATTRIBUTION (liens de référence agents) ==========
+const REF_STORAGE_KEY='ur_ref';
+const REF_EXPIRY_MS=30*24*60*60*1000; // fenêtre d'attribution : 30 jours
+let deeplinkListingId=null;
+
+// Capture ?ref=AGENT_ID (mémorisé 30j) et ?listing=ID (ouvre directement la fiche une fois
+// l'inventaire chargé). Nettoie l'URL affichée pour rester propre si le visiteur la repartage.
+function captureReferralFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  const ref=params.get('ref');
+  deeplinkListingId=params.get('listing');
+  if(ref){
+    try{localStorage.setItem(REF_STORAGE_KEY,JSON.stringify({id:ref,ts:Date.now()}));}catch(e){}
+  }
+  if(params.has('ref')||params.has('listing')){
+    window.history.replaceState({},'',window.location.pathname);
+  }
+}
+
+// Ne fait que "suggérer" un agent au serveur — c'est le trigger Postgres côté Supabase qui
+// valide réellement que l'agent existe et est actif avant d'assigner la demande.
+function getActiveReferral(){
+  try{
+    const raw=localStorage.getItem(REF_STORAGE_KEY);
+    if(!raw)return null;
+    const {id,ts}=JSON.parse(raw);
+    if(!id||Date.now()-ts>REF_EXPIRY_MS){localStorage.removeItem(REF_STORAGE_KEY);return null;}
+    return id;
+  }catch(e){return null;}
+}
+
 async function init(){
   try{
     const FETCH_LIMIT=5000;
@@ -1015,6 +1046,9 @@ async function init(){
     renderListings();
     animateStats();
     updateInvSubtitle();
+    if(deeplinkListingId&&DATA.find(d=>d.id===deeplinkListingId)){
+      openContact(deeplinkListingId);
+    }
   }catch(e){
     document.getElementById('grid-view').innerHTML='<div class="empty-state">'+T[lang]['error.loadFailedGrid']+'</div>';
     document.getElementById('preview-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text2);padding:40px">'+T[lang]['error.loadFailed']+'</div>';
@@ -1233,7 +1267,7 @@ async function submitRappel(){
   btn.disabled=true;btn.textContent=T[lang]['btn.sending'];
   try{
     const apt=currentAptId?DATA.find(d=>d.id===currentAptId):null;
-    const r=await fetch(SU+'/rest/v1/demandes_clients',{method:'POST',headers:{...SH,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({type_demande:'rappel',logement_id:currentAptId||null,nom,telephone:tel,email:document.getElementById('r-email').value.trim()||null,message:(apt?'Logement: '+apt.adresse+'\n':'')+document.getElementById('r-msg').value.trim()})});
+    const r=await fetch(SU+'/rest/v1/demandes_clients',{method:'POST',headers:{...SH,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({type_demande:'rappel',logement_id:currentAptId||null,ref_agent_id:getActiveReferral(),nom,telephone:tel,email:document.getElementById('r-email').value.trim()||null,message:(apt?'Logement: '+apt.adresse+'\n':'')+document.getElementById('r-msg').value.trim()})});
     if(!r.ok)throw new Error();
     document.getElementById('contact-form-wrap').style.display='none';
     document.getElementById('contact-success').style.display='block';
@@ -1255,7 +1289,7 @@ async function submitPrequal(){
   btn.disabled=true;btn.textContent=T[lang]['btn.sending'];
   try{
     const apt=currentAptId?DATA.find(d=>d.id===currentAptId):null;
-    const r=await fetch(SU+'/rest/v1/demandes_clients',{method:'POST',headers:{...SH,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({type_demande:'prequal',logement_id:currentAptId||null,nom,telephone:tel,email,revenu_mensuel:parseInt(revenu)||null,dossier_tal:document.getElementById('p-tal').value==='true',date_demenagement:document.getElementById('p-date').value.trim()||null,message:(apt?'Logement: '+apt.adresse+'\n':'')+document.getElementById('p-msg').value.trim()})});
+    const r=await fetch(SU+'/rest/v1/demandes_clients',{method:'POST',headers:{...SH,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({type_demande:'prequal',logement_id:currentAptId||null,ref_agent_id:getActiveReferral(),nom,telephone:tel,email,revenu_mensuel:parseInt(revenu)||null,dossier_tal:document.getElementById('p-tal').value==='true',date_demenagement:document.getElementById('p-date').value.trim()||null,message:(apt?'Logement: '+apt.adresse+'\n':'')+document.getElementById('p-msg').value.trim()})});
     if(!r.ok)throw new Error();
     document.getElementById('contact-form-wrap').style.display='none';
     document.getElementById('contact-success').style.display='block';
@@ -1348,6 +1382,7 @@ document.getElementById('modal-contact').addEventListener('click',e=>{
 
 document.querySelectorAll('.cpy-year').forEach(el=>el.textContent=new Date().getFullYear());
 applyStaticI18n();
+captureReferralFromUrl();
 
 init();
 </script>
