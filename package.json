@@ -23,7 +23,7 @@
     "geocode-backfill": "node scripts/geocode-backfill.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1",
+    "@supabase/supabase-js": "2.49.1",
     "dotenv": "^16.4.7",
     "zod": "^3.24.2"
   },
