@@ -193,6 +193,51 @@ describe('POST /api/public/leads', () => {
     });
     expect(res.status).toBe(201);
   });
+
+  it('notifies each active admin via sendEmailToMany', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const demandesChain = createThenableChain({ data: null, error: null });
+    demandesChain.insert = insert;
+
+    vi.mocked(supabaseAdmin.from).mockImplementation(
+      mockSupabaseFrom({
+        agents: () =>
+          createThenableChain({
+            data: [{ email: 'admin1@example.com' }, { email: 'admin2@example.com' }],
+            error: null,
+          }),
+        demandes_clients: () => demandesChain,
+      }),
+    );
+
+    const res = await request(app).post('/api/public/leads').send({
+      typeDemande: 'rappel',
+      nom: 'Jean',
+      telephone: '5145551234',
+      hp: '',
+      lang: 'fr',
+    });
+
+    expect(res.status).toBe(201);
+    expect(emailMocks.sendEmailToMany).toHaveBeenCalledWith(
+      ['admin1@example.com', 'admin2@example.com'],
+      expect.any(Function),
+    );
+    expect(emailMocks.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('skips leadConfirmationClient when prospect email is omitted', async () => {
+    setupLeadMocks();
+    const res = await request(app).post('/api/public/leads').send({
+      typeDemande: 'rappel',
+      nom: 'Jean',
+      telephone: '5145551234',
+      hp: '',
+      lang: 'fr',
+    });
+    expect(res.status).toBe(201);
+    expect(emailMocks.sendEmail).not.toHaveBeenCalled();
+  });
 });
 
 describe('lead rate limiting', () => {

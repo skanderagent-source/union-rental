@@ -1,0 +1,29 @@
+{
+  "updatedAt": "2026-07-06T02:36:33.104Z",
+  "phases": {
+    "p4": {
+      "offline": true,
+      "live": null,
+      "note": "Fill SUPABASE_SERVICE_ROLE_KEY in apps/backend/.env"
+    },
+    "p6": {
+      "offline": true,
+      "live": null,
+      "note": "Fill R2_* keys in apps/backend/.env"
+    },
+    "p19": {
+      "offline": true,
+      "live": null
+    },
+    "p21-p25": {
+      "offline": true,
+      "live": null,
+      "note": "Production deploy/DNS/cutover need domains + VPS/Vercel access"
+    }
+  },
+  "credentialHints": {
+    "supabase": true,
+    "r2": true,
+    "dns": true
+  }
+}

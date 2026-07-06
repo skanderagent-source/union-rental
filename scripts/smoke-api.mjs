@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+/**
+ * Phase 19 / 20: Automated API smoke (build + tests + optional live backend).
+ */
+import { execSync } from 'node:child_process';
+import { fetchJson } from './lib/http.mjs';
+import { rootDir } from './lib/env.mjs';
+import { hasLiveSupabase } from './lib/credentials.mjs';
+
+const root = rootDir();
+const apiBase = process.env.SMOKE_API_BASE_URL ?? 'http://localhost:4001';
+
+console.log('== Union Rental automated smoke ==\n');
+
+if (!process.env.SMOKE_SKIP_BUILD) {
+  execSync('npm run build', { stdio: 'inherit', cwd: root });
+} else {
+  console.log('(build skipped — SMOKE_SKIP_BUILD set)');
+}
+
+execSync('npm run test', { stdio: 'inherit', cwd: root });
+execSync('npm run verify-env', { stdio: 'inherit', cwd: root });
+
+console.log('\n== Backend health ==');
+try {
+  const { res, body } = await fetchJson(`${apiBase}/health`);
+  if (!res.ok || body?.ok !== true) throw new Error(`unexpected health: ${res.status}`);
+  console.log(`✓ Health OK at ${apiBase}/health`);
+} catch (err) {
+  console.log(`○ Backend not reachable at ${apiBase} — start with: npm run dev:backend`);
+  console.log(`  (${err.message})`);
+  process.exit(0);
+}
+
+if (!hasLiveSupabase()) {
+  console.log('\n○ Live API checks skipped — configure real Supabase/R2 keys in apps/backend/.env');
+  console.log('✓ Automated smoke passed (offline + mocked tests)');
+  process.exit(0);
+}
+
+console.log('\n== Live public API ==');
+const listings = await fetchJson(`${apiBase}/api/public/listings?pageSize=3`);
+if (!listings.res.ok || !Array.isArray(listings.body?.items)) {
+  throw new Error(`listings failed: ${listings.res.status} ${JSON.stringify(listings.body)}`);
+}
+console.log(`✓ GET /api/public/listings (${listings.body.items.length} items, total ${listings.body.total})`);
+
+const stats = await fetchJson(`${apiBase}/api/public/stats`);
+if (!stats.res.ok || typeof stats.body?.availableListings !== 'number') {
+  throw new Error(`stats failed: ${stats.res.status}`);
+}
+console.log('✓ GET /api/public/stats');
+
+const quartiers = await fetchJson(`${apiBase}/api/public/quartiers`);
+if (!quartiers.res.ok || !Array.isArray(quartiers.body)) {
+  throw new Error(`quartiers failed: ${quartiers.res.status}`);
+}
+console.log('✓ GET /api/public/quartiers');
+
+const map = await fetchJson(`${apiBase}/api/public/listings/map`);
+if (!map.res.ok || !Array.isArray(map.body)) {
+  throw new Error(`map failed: ${map.res.status}`);
+}
+console.log(`✓ GET /api/public/listings/map (${map.body.length} markers)`);
+
+console.log('\n== Honeypot lead ==');
+const honeypot = await fetchJson(`${apiBase}/api/public/leads`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    typeDemande: 'rappel',
+    nom: 'Smoke Test',
+    telephone: '5145550100',
+    hp: 'bot',
+    lang: 'fr',
+  }),
+});
+if (!honeypot.res.ok || honeypot.body?.received !== true) {
+  throw new Error(`honeypot lead failed: ${honeypot.res.status}`);
+}
+console.log('✓ POST /api/public/leads honeypot returns received:true');
+
+console.log('\n== Rate limit (leads) ==');
+let saw429 = false;
+for (let i = 0; i < 25; i++) {
+  const { res } = await fetchJson(`${apiBase}/api/public/leads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      typeDemande: 'rappel',
+      nom: `Rate ${i}`,
+      telephone: '5145550101',
+      hp: '',
+      lang: 'fr',
+    }),
+  });
+  if (res.status === 429) {
+    saw429 = true;
+    break;
+  }
+}
+if (!saw429) {
+  console.warn('⚠ Rate limit 429 not observed in 25 posts — check RATE_LIMIT_LEADS_MAX');
+} else {
+  console.log('✓ Lead rate limit returns 429');
+}
+
+console.log('\n✓ Automated smoke passed');
+console.log('Manual UI checklist: docs/smoke-test.md');

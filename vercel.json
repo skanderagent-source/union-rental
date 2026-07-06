@@ -1,3 +1,6 @@
 {
+  "installCommand": "npm install",
+  "buildCommand": "npm run build --workspace @union-rental/shared && npm run build --workspace @union-rental/frontend",
+  "outputDirectory": "apps/frontend/dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

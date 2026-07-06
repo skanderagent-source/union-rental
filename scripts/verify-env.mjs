@@ -34,6 +34,18 @@ const frontendExample = ['VITE_API_BASE_URL', 'VITE_SITE_URL'];
 
 const secretKeys = ['SUPABASE_SERVICE_ROLE_KEY', 'R2_SECRET_ACCESS_KEY', 'RESEND_API_KEY'];
 
+const placeholderPatterns = [
+  /^your-/i,
+  /^changeme$/i,
+  /YOUR_/,
+  /example\.com/i,
+];
+
+function isPlaceholder(value) {
+  if (!value || String(value).trim() === '') return false;
+  return placeholderPatterns.some((re) => re.test(String(value).trim()));
+}
+
 function parseEnvFile(path) {
   if (!existsSync(path)) return null;
   const content = readFileSync(path, 'utf8');
@@ -49,6 +61,7 @@ function parseEnvFile(path) {
 }
 
 let failed = false;
+const warnings = [];
 
 if (!existsSync(resolve('package.json'))) {
   console.error('Run from repository root.');
@@ -74,6 +87,18 @@ if (backendEnv) {
       failed = true;
     }
   }
+  for (const key of [
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'R2_ACCOUNT_ID',
+    'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY',
+    'GEOCODING_USER_AGENT',
+  ]) {
+    const val = backendEnv.get(key);
+    if (val && isPlaceholder(val)) {
+      warnings.push(`${key} still has placeholder value — live API/deploy will fail until replaced`);
+    }
+  }
 }
 
 if (frontendEnv) {
@@ -91,8 +116,26 @@ if (frontendEnv) {
   }
 }
 
+try {
+  const { execSync } = await import('node:child_process');
+  const tracked = execSync('git ls-files 2>/dev/null', { encoding: 'utf8' });
+  for (const line of tracked.split('\n')) {
+    if (line.endsWith('.env')) {
+      console.error(`.env tracked by git: ${line}`);
+      failed = true;
+    }
+  }
+} catch {
+  // not a git repo yet — skip
+}
+
 if (failed) {
   process.exit(1);
 }
 
-console.log('Environment check passed.');
+if (warnings.length) {
+  for (const w of warnings) console.warn(`Warning: ${w}`);
+  console.log('Environment structure OK (placeholders remain — see docs/zero-gap-guide.md).');
+} else {
+  console.log('Environment check passed.');
+}

@@ -116,4 +116,58 @@ describe('geocoding.service', () => {
     await runGeocodeBackfill(5);
     expect(chain.or).toHaveBeenCalledWith('geocoding_status.is.null,geocoding_status.eq.pending');
   });
+
+  it('updates logements row on successful geocode during backfill', async () => {
+    const row = { id: 'listing-2', adresse: '10 Rue Succès', quartier: 'Plateau' };
+    const cacheChain = createThenableChain({ data: null, error: null });
+    cacheChain.maybeSingle = vi.fn(async () => ({ data: null, error: null }));
+    const upsertChain = createThenableChain({ data: null, error: null });
+    upsertChain.upsert = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnThis();
+    const updateChain = createThenableChain({ data: null, error: null });
+    updateChain.eq = vi.fn(() => updateChain);
+
+    vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+      if (table === 'logements') {
+        const chain = createThenableChain({ data: [row], error: null });
+        chain.select = vi.fn(() => chain);
+        chain.is = vi.fn(() => chain);
+        chain.or = vi.fn(() => chain);
+        chain.limit = vi.fn(() => chain);
+        chain.update = update;
+        chain.eq = vi.fn(() => updateChain);
+        return chain;
+      }
+      if (table === 'geocode_cache') {
+        let calls = 0;
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn(async () => {
+                calls += 1;
+                return { data: calls > 1 ? null : null, error: null };
+              }),
+            })),
+          })),
+          upsert: upsertChain.upsert,
+        };
+      }
+      return createThenableChain({ data: null, error: null });
+    });
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => [{ lat: '45.52', lon: '-73.58' }],
+    });
+
+    const summary = await runGeocodeBackfill(1);
+    expect(summary.geocoded).toBe(1);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        latitude: 45.52,
+        longitude: -73.58,
+        geocoding_status: 'success',
+      }),
+    );
+  });
 });

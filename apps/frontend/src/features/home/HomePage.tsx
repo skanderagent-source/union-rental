@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useContactModal } from '@/app/providers/ContactModalProvider';
-import { useReveal, useCountUp } from '@/hooks/useReveal';
+import { useReveal } from '@/hooks/useReveal';
+import { useCountUp } from '@/hooks/useCountUp';
 import { api } from '@/lib/apiClient';
 import { ListingCard } from '@/components/listings/ListingCard';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Footer } from '@/components/layout/Footer';
 import heroHome from '@/assets/hero-home.jpg';
 import ctaBg from '@/assets/cta-bg.jpg';
@@ -13,7 +15,7 @@ import photoVieux from '@/assets/photo-vieux-montreal.jpg';
 import photoCentre from '@/assets/photo-centre-ville.jpg';
 
 export function HomePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { openContact } = useContactModal();
   const revealRef = useReveal([]);
@@ -31,9 +33,9 @@ export function HomePage() {
       ),
   });
 
-  const total = useCountUp(statsQuery.data?.totalListings ?? 0, !!statsQuery.data);
-  const dispo = useCountUp(statsQuery.data?.availableListings ?? 0, !!statsQuery.data);
-  const areas = useCountUp(statsQuery.data?.quartierCount ?? 0, !!statsQuery.data);
+  const total = useCountUp(statsQuery.data?.totalListings ?? 0, lang);
+  const dispo = useCountUp(statsQuery.data?.availableListings ?? 0, lang);
+  const areas = useCountUp(statsQuery.data?.quartierCount ?? 0, lang);
 
   return (
     <div className="app-page" ref={revealRef}>
@@ -65,15 +67,15 @@ export function HomePage() {
       <div className="stats-bar">
         <div className="stats-inner">
           <div className="stat-item">
-            <span className="stat-num">{total.toLocaleString()}</span>
+            <span className="stat-num">{total}</span>
             <span className="stat-lbl">{t('stats.logements')}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-num">{dispo.toLocaleString()}</span>
+            <span className="stat-num">{dispo}</span>
             <span className="stat-lbl">{t('stats.dispo')}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-num">{areas.toLocaleString()}</span>
+            <span className="stat-num">{areas}</span>
             <span className="stat-lbl">{t('stats.quartiers')}</span>
           </div>
         </div>
@@ -111,6 +113,11 @@ export function HomePage() {
             {previewQuery.isLoading && (
               <div className="loading-wrap" style={{ gridColumn: '1/-1' }}>
                 <div className="spinner" />
+              </div>
+            )}
+            {previewQuery.isError && (
+              <div style={{ gridColumn: '1/-1' }}>
+                <ErrorState onRetry={() => previewQuery.refetch()} />
               </div>
             )}
             {previewQuery.data?.items.map((listing) => (

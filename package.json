@@ -18,7 +18,15 @@
     "lint": "npm run lint --workspace @union-rental/shared && npm run lint --workspace @union-rental/backend && npm run lint --workspace @union-rental/frontend",
     "test": "npm run test --workspace @union-rental/backend",
     "verify-env": "node scripts/verify-env.mjs",
+    "smoke": "node scripts/smoke-api.mjs",
+    "security-check": "node scripts/run-security-checklist.mjs",
+    "verify-db": "node scripts/verify-db.mjs",
+    "verify-dns": "node scripts/verify-dns.mjs",
+    "post-dns": "node scripts/post-dns-checklist.mjs",
+    "apply-ops": "node scripts/apply-ops-phases.mjs",
     "extract-legacy-assets": "node scripts/extract-legacy-assets.mjs",
+    "extract-legacy-css": "node scripts/extract-legacy-css.mjs",
+    "apply-cutover": "node scripts/apply-cutover.mjs",
     "send-test-email": "node scripts/send-test-email.mjs",
     "geocode-backfill": "node scripts/geocode-backfill.mjs"
   },
@@ -28,6 +36,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vercel": "^54.20.1"
   }
 }

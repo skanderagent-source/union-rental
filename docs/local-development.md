@@ -31,7 +31,12 @@ npm run verify-env
 npm run lint
 npm run build
 npm run test
+npm run smoke
+npm run security-check
+npm run apply-ops
 ```
+
+Manual UI checklist: `docs/smoke-test.md`
 
 ## Start
 

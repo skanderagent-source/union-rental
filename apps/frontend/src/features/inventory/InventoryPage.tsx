@@ -5,6 +5,7 @@ import { useI18n } from '@/app/providers/I18nProvider';
 import { api } from '@/lib/apiClient';
 import { fmtResultsCount } from '@/lib/format';
 import { ListingCard } from '@/components/listings/ListingCard';
+import { ErrorState } from '@/components/common/ErrorState';
 import { InventoryMap } from '@/components/map/InventoryMap';
 import { Footer } from '@/components/layout/Footer';
 import heroInventaire from '@/assets/hero-inventaire.jpg';
@@ -217,6 +218,8 @@ export function InventoryPage() {
             <div className="loading-wrap">
               <div className="spinner" />
             </div>
+          ) : mapQuery.isError ? (
+            <ErrorState message={t('error.loadFailed')} onRetry={() => mapQuery.refetch()} />
           ) : (
             <InventoryMap listings={mapQuery.data ?? []} />
           )
@@ -229,7 +232,10 @@ export function InventoryPage() {
                 </div>
               )}
               {listingsQuery.isError && (
-                <div className="empty-state">{t('error.loadFailedGrid')}</div>
+                <ErrorState
+                  message={t('error.loadFailedGrid')}
+                  onRetry={() => listingsQuery.refetch()}
+                />
               )}
               {!listingsQuery.isLoading && listingsQuery.data?.items.length === 0 && (
                 <div

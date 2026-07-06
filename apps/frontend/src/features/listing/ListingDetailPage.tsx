@@ -7,6 +7,7 @@ import { useContactModal } from '@/app/providers/ContactModalProvider';
 import { api } from '@/lib/apiClient';
 import { fmtPriceMonth } from '@/lib/format';
 import { Footer } from '@/components/layout/Footer';
+import { ErrorState } from '@/components/common/ErrorState';
 
 export function ListingDetailPage() {
   const { id } = useParams();
@@ -40,6 +41,11 @@ export function ListingDetailPage() {
           <button type="button" className="btn-hero-p" onClick={() => openContact(null)}>
             {t('nav.contact')}
           </button>
+          {query.isError && (
+            <div style={{ marginTop: 16 }}>
+              <ErrorState onRetry={() => query.refetch()} />
+            </div>
+          )}
         </div>
         <Footer />
       </div>
@@ -88,6 +94,14 @@ export function ListingDetailPage() {
           {mainImage ? (
             <div className="media-tile">
               <img src={mainImage} alt={listing.adresse} className="detail-main-photo" />
+              <button
+                type="button"
+                className="media-download"
+                aria-label={t('media.downloadAria')}
+                onClick={() => downloadMedia(images[activeImage]?.id ?? images[0]!.id)}
+              >
+                {t('media.download')}
+              </button>
             </div>
           ) : (
             <div className="photo-ph" style={{ minHeight: 240, borderRadius: 14 }}>
@@ -107,31 +121,6 @@ export function ListingDetailPage() {
                   onClick={() => setActiveImage(idx)}
                 />
               ))}
-            </div>
-          )}
-          {images.map((img) => (
-            <div key={`dl-${img.id}`} className="media-tile" style={{ display: 'none' }}>
-              <button
-                type="button"
-                className="media-download"
-                aria-label={t('media.downloadAria')}
-                onClick={() => downloadMedia(img.id)}
-              >
-                {t('media.download')}
-              </button>
-            </div>
-          ))}
-          {images.length > 0 && (
-            <div className="media-tile">
-              <img src={images[activeImage]?.viewUrl ?? images[0]!.viewUrl} alt="" style={{ display: 'none' }} />
-              <button
-                type="button"
-                className="media-download"
-                style={{ position: 'relative', marginTop: 8 }}
-                onClick={() => downloadMedia(images[activeImage]?.id ?? images[0]!.id)}
-              >
-                {t('media.download')}
-              </button>
             </div>
           )}
           {videos.length > 0 && (

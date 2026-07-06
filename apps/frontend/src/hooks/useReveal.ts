@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useReveal(deps: unknown[] = []) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,27 +23,4 @@ export function useReveal(deps: unknown[] = []) {
   }, deps);
 
   return ref;
-}
-
-export function useCountUp(target: number, enabled = true) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    if (!enabled || target <= 0) {
-      setValue(target);
-      return;
-    }
-    let begin: number | null = null;
-    const dur = 1400;
-    const step = (ts: number) => {
-      if (!begin) begin = ts;
-      const p = Math.min((ts - begin) / dur, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      setValue(Math.floor(ease * target));
-      if (p < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, enabled]);
-
-  return value;
 }
