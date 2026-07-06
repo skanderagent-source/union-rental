@@ -1,0 +1,7 @@
+{
+  "redirects": [{
+    "source": "/(.*)",
+    "destination": "https://YOUR_UNION_DOMAIN/$1",
+    "permanent": true
+  }]
+}

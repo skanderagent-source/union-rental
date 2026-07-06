@@ -1,0 +1,33 @@
+{
+  "name": "union-rental-fullstack",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:frontend": "npm run dev --workspace @union-rental/frontend",
+    "dev:backend": "npm run dev --workspace @union-rental/backend",
+    "build": "npm run build --workspace @union-rental/shared && npm run build --workspace @union-rental/backend && npm run build --workspace @union-rental/frontend",
+    "lint": "npm run lint --workspace @union-rental/shared && npm run lint --workspace @union-rental/backend && npm run lint --workspace @union-rental/frontend",
+    "test": "npm run test --workspace @union-rental/backend",
+    "verify-env": "node scripts/verify-env.mjs",
+    "extract-legacy-assets": "node scripts/extract-legacy-assets.mjs",
+    "send-test-email": "node scripts/send-test-email.mjs",
+    "geocode-backfill": "node scripts/geocode-backfill.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

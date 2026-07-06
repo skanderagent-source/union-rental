@@ -1,0 +1,44 @@
+# Union Rental (LogiGo Public Site)
+
+Public customer-facing site for browsing available rental listings and submitting callback / pre-qualification leads. Sister app to Fast Rental — both share the same Supabase database and Cloudflare R2 media bucket.
+
+## Local setup
+
+```bash
+npm install
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
+npm run verify-env
+npm run dev:backend   # port 4001
+npm run dev:frontend  # port 5174
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start backend + frontend |
+| `npm run build` | Build shared, backend, frontend |
+| `npm run test` | Backend Vitest suite |
+| `npm run lint` | Typecheck all workspaces |
+| `npm run verify-env` | Validate `.env` files |
+| `npm run geocode-backfill` | Manual geocoding backfill |
+
+## Architecture
+
+- **Frontend**: React + Vite on Vercel (port 5174 locally)
+- **Backend**: Node + Express on VPS behind Caddy (port 4001 locally)
+- **Database**: Shared Supabase project (schema owned by Fast Rental repo)
+- **Media**: Read-only signed URLs from `fast-rental-media` R2 bucket
+- **Email**: Resend (backend only)
+
+See `docs/local-development.md`, `docs/deployment.md`, `docs/database.md`, `docs/operations.md`, and `docs/security.md`.
+
+## Production checklist
+
+- [ ] Resend domain verified
+- [ ] R2 read-only token scoped to bucket
+- [ ] Service role key only on VPS (chmod 600)
+- [ ] No Supabase keys in frontend bundle
+- [ ] Rate limits verified
+- [ ] Legacy site redirected to new domain

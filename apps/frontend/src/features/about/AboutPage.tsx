@@ -1,0 +1,81 @@
+import { useNavigate } from 'react-router-dom';
+import { useI18n } from '@/app/providers/I18nProvider';
+import { useContactModal } from '@/app/providers/ContactModalProvider';
+import { useReveal } from '@/hooks/useReveal';
+import { Footer } from '@/components/layout/Footer';
+import heroAbout from '@/assets/hero-about.jpg';
+import missionImg from '@/assets/mission.jpg';
+
+export function AboutPage() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { openContact } = useContactModal();
+  const revealRef = useReveal([]);
+
+  return (
+    <div className="app-page" ref={revealRef}>
+      <div className="about-hero">
+        <img src={heroAbout} alt="" />
+        <div className="about-hero-overlay" />
+        <div className="about-hero-content">
+          <h1>{t('about.heroTitle')}</h1>
+          <p>{t('about.heroSub')}</p>
+        </div>
+      </div>
+
+      <div className="about-body">
+        <div className="about-mission">
+          <div className="about-mission-img reveal">
+            <img src={missionImg} alt="Appartement Montréal" />
+          </div>
+          <div className="about-mission-text">
+            <div className="section-label reveal">{t('about.missionLabel')}</div>
+            <h2 className="reveal">{t('about.missionTitle')}</h2>
+            <p className="reveal">{t('about.missionP1')}</p>
+            <p className="reveal">{t('about.missionP2')}</p>
+            <p className="reveal">{t('about.missionP3')}</p>
+          </div>
+        </div>
+
+        <div className="about-values">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="value-card reveal">
+              <div className="value-icon">{['🤝', '⚡', '🏙️'][n - 1]}</div>
+              <div className="value-title">{t(`value${n}.title`)}</div>
+              <div className="value-text">{t(`value${n}.text`)}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="how-section">
+          <div className="section-label reveal">{t('how.label')}</div>
+          <div className="section-title reveal">{t('how.title')}</div>
+          <div className="how-steps">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="how-step reveal">
+                <div className="how-step-num">{n}</div>
+                <div className="how-step-title">{t(`step${n}.title`)}</div>
+                <div className="how-step-text">{t(`step${n}.text`)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="about-cta reveal">
+          <h2>{t('aboutcta.title')}</h2>
+          <p>{t('aboutcta.sub')}</p>
+          <div className="about-cta-btns">
+            <button type="button" className="btn-about-p" onClick={() => navigate('/inventaire')}>
+              {t('aboutcta.btnSee')}
+            </button>
+            <button type="button" className="btn-about-s" onClick={() => openContact(null)}>
+              {t('nav.contact')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}

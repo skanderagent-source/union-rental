@@ -1,0 +1,139 @@
+@import './theme.css';
+@import './legacy-styles.css';
+
+#root {
+  min-height: 100vh;
+}
+
+.app-page {
+  min-height: 100vh;
+  padding-top: 66px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.field-error {
+  color: #b91c1c;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.detail-gallery {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.detail-main-photo {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.detail-thumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-thumbs img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.detail-thumbs img.active {
+  border-color: var(--blue);
+}
+
+.media-tile {
+  position: relative;
+  display: inline-block;
+}
+
+.media-tile .media-download {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.detail-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.detail-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.detail-header h1 {
+  font-size: clamp(24px, 3vw, 32px);
+  margin: 8px 0;
+}
+
+.detail-cta {
+  margin-top: 24px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.notfound-page {
+  text-align: center;
+  padding: 120px 24px;
+}
+
+.notfound-page h1 {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.notfound-page a,
+.notfound-page button {
+  color: var(--blue);
+  font-weight: 600;
+}
