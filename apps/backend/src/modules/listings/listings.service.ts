@@ -49,6 +49,7 @@ async function attachThumbnails(rows: ViewRow[]): Promise<PublicListing[]> {
     .select('id,listing_id,object_key,original_filename')
     .in('listing_id', ids)
     .eq('status', 'approved')
+    .not('upload_completed_at', 'is', null)
     .eq('type', 'image')
     .order('created_at', { ascending: true });
 
@@ -138,6 +139,7 @@ export async function getPublicListingById(id: string): Promise<PublicListingDet
     .select('id,type,object_key,original_filename,created_at')
     .eq('listing_id', id)
     .eq('status', 'approved')
+    .not('upload_completed_at', 'is', null)
     .order('type', { ascending: true })
     .order('created_at', { ascending: true });
 
@@ -229,12 +231,12 @@ export async function getQuartierCounts(): Promise<QuartierCount[]> {
 export async function getMediaDownloadUrl(mediaId: string) {
   const { data: media, error } = await supabaseAdmin
     .from('listing_media')
-    .select('id,status,object_key,original_filename,listing_id')
+    .select('id,status,object_key,original_filename,listing_id,upload_completed_at')
     .eq('id', mediaId)
     .maybeSingle();
 
   if (error) throw error;
-  if (!media || media.status !== 'approved') {
+  if (!media || media.status !== 'approved' || !media.upload_completed_at) {
     throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
   }
 

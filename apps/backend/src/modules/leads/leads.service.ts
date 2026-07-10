@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../db/supabaseAdmin.js';
 import { sendEmail, sendEmailToMany } from '../email/email.service.js';
 import { leadConfirmationClient, leadReceivedAdmin } from '../email/templates.js';
 import { logger } from '../../config/logger.js';
+import { stripHtml } from '../../utils/sanitize.js';
 
 async function validateRefAgent(refAgentId: string | null | undefined): Promise<string | null> {
   if (!refAgentId) return null;
@@ -21,7 +22,7 @@ async function validateListing(listingId: string | null | undefined): Promise<{
 }> {
   if (!listingId) return { id: null, adresse: null };
   const { data } = await supabaseAdmin
-    .from('logements')
+    .from('public_available_listings')
     .select('id,adresse')
     .eq('id', listingId)
     .maybeSingle();
@@ -48,22 +49,28 @@ export async function createPublicLead(input: CreateLeadBody) {
     suggestedAgentName = agent?.nom ?? null;
   }
 
-  const userMessage = input.message?.trim() ?? '';
-  const composedMessage = listing.adresse
-    ? `Logement: ${listing.adresse}\n${userMessage}`.trim()
-    : userMessage || null;
+  const nom = stripHtml(input.nom);
+  const telephone = stripHtml(input.telephone);
+  const userMessage = input.message ? stripHtml(input.message) : '';
+  const messageLines: string[] = [];
+  if (listing.adresse) messageLines.push(`Logement: ${listing.adresse}`);
+  if (input.typeDemande === 'prequal' && input.dossierTal !== undefined && input.dossierTal !== null) {
+    messageLines.push(`Dossier TAL: ${input.dossierTal ? 'Oui' : 'Non'}`);
+  }
+  if (userMessage) messageLines.push(userMessage);
+  const composedMessage = messageLines.length > 0 ? messageLines.join('\n') : null;
 
   const email = input.email?.trim() || null;
 
   const { error } = await supabaseAdmin.from('demandes_clients').insert({
     type_demande: input.typeDemande,
-    logement_id: listing.id,
+    listing_id: listing.id,
     ref_agent_id: validRefAgentId,
-    nom: input.nom,
-    telephone: input.telephone,
+    nom,
+    telephone,
     email,
+    statut: 'nouveau',
     revenu_mensuel: input.typeDemande === 'prequal' ? input.revenuMensuel : null,
-    dossier_tal: input.typeDemande === 'prequal' ? (input.dossierTal ?? false) : null,
     date_demenagement: input.dateDemenagement ?? null,
     message: composedMessage,
   });
@@ -72,8 +79,8 @@ export async function createPublicLead(input: CreateLeadBody) {
 
   const leadPayload = {
     typeDemande: input.typeDemande,
-    nom: input.nom,
-    telephone: input.telephone,
+    nom,
+    telephone,
     email,
     revenuMensuel: input.typeDemande === 'prequal' ? (input.revenuMensuel ?? null) : null,
     dossierTal: input.typeDemande === 'prequal' ? (input.dossierTal ?? false) : null,
@@ -102,7 +109,7 @@ export async function createPublicLead(input: CreateLeadBody) {
     void sendEmail({
       to: email,
       ...leadConfirmationClient({
-        nom: input.nom,
+        nom,
         listingAdresse: listing.adresse,
         lang: input.lang ?? 'fr',
       }),

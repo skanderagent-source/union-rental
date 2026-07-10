@@ -15,6 +15,7 @@ export function createThenableChain(result: SupabaseResult) {
     'neq',
     'or',
     'is',
+    'not',
     'in',
     'order',
     'range',

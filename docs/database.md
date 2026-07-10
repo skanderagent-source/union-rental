@@ -31,10 +31,10 @@ where table_schema = 'public'
 select table_name from information_schema.views
 where table_schema = 'public' and table_name in ('listing_media_counts','public_available_listings');
 
--- C. Lead columns
+-- C. Lead columns (Fast Rental schema)
 select column_name from information_schema.columns
 where table_schema = 'public' and table_name = 'demandes_clients'
-  and column_name in ('logement_id','dossier_tal','ref_agent_id');
+  and column_name in ('listing_id','ref_agent_id');
 
 -- D. Geocoding columns on logements
 select column_name from information_schema.columns
@@ -46,10 +46,12 @@ Automated live check: `npm run verify-db`
 
 ## Lead insert compatibility
 
-Union Rental inserts into `demandes_clients` with columns:
+Union Rental inserts into `demandes_clients` with columns aligned to Fast Rental:
 
-- `type_demande`, `logement_id`, `ref_agent_id`, `nom`, `telephone`, `email`
-- `revenu_mensuel`, `dossier_tal`, `date_demenagement`, `message`
+- `type_demande`, `listing_id`, `ref_agent_id`, `nom`, `telephone`, `email`
+- `revenu_mensuel`, `date_demenagement`, `message`
+
+Prequal **dossier TAL** is stored in `message` (`Dossier TAL: Oui/Non`) because the shared schema has no `dossier_tal` column.
 
 DB defaults handle `statut`, `lu`, `created_at`.
 

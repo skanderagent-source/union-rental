@@ -11,7 +11,7 @@ npm run lint
 npm run build
 npm run test
 npm run verify-env
-node scripts/geocode-backfill.mjs --limit=25
+npm run verify-db
 npm run smoke
 ```
 
@@ -23,8 +23,8 @@ npm run smoke
 4. **Photos-first** — listings with approved photos before those without; thumbnails render.
 5. **Map** — toggle grid↔carte on `/inventaire`; markers stable on repeat toggle; faded fallback shows "Position approximative".
 6. **Detail** — gallery, download works, "Je suis intéressé(e)" opens modal with listing chip.
-7. **Rappel** — nom+tel only → success; row in `demandes_clients` with correct `logement_id` and message prefix; with `EMAIL_ENABLED=false` backend logs skipped emails.
-8. **Prequal** — missing revenu → inline error; complete → row has `revenu_mensuel`, `dossier_tal`, `date_demenagement`.
+7. **Rappel** — nom+tel only → success; row in `demandes_clients` with correct `listing_id` and message prefix; with `EMAIL_ENABLED=false` backend logs skipped emails.
+8. **Prequal** — missing revenu → inline error; complete → row has `revenu_mensuel`, `date_demenagement`, and `Dossier TAL` line in `message`.
 9. **Honeypot** — fill hidden `hp` via devtools → success UI but no DB row.
 10. **Referral** — `/?listing=<id>&ref=<agentUuid>` → detail page, URL cleaned; lead has `ref_agent_id`. Invalid ref ignored.
 11. **Unavailable listing** — `/?listing=<rentedOrDeletedId>` → "n'est plus disponible" with contact button.

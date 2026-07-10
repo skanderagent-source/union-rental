@@ -1,31 +1,37 @@
 import { supabaseAdmin } from '../../db/supabaseAdmin.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
+import { buildGeocodeQuery, normalizeGeocodeAddress } from './geocoding.helpers.js';
 
 let lastNominatimCall = 0;
-
-function normalizeAddress(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-}
+let rateLimitChain: Promise<void> = Promise.resolve();
 
 async function waitNominatimRateLimit() {
+  let release!: () => void;
+  const slot = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const previous = rateLimitChain;
+  rateLimitChain = slot;
+  await previous;
+
   const now = Date.now();
   const elapsed = now - lastNominatimCall;
   if (elapsed < 1100) {
     await new Promise((r) => setTimeout(r, 1100 - elapsed));
   }
   lastNominatimCall = Date.now();
+  release();
 }
 
-export async function geocodeAddress(
-  adresse: string,
-  quartier: string | null,
-): Promise<{ latitude: number; longitude: number } | null> {
-  const normalized = normalizeAddress(`${adresse} ${quartier ?? ''}`);
+export async function geocodeAddress(listing: {
+  adresse: string;
+  quartier: string | null;
+  ville: string | null;
+}): Promise<{ latitude: number; longitude: number } | null> {
+  const query = buildGeocodeQuery(listing);
+  const normalized = normalizeGeocodeAddress(query);
+
   const { data: cached } = await supabaseAdmin
     .from('geocode_cache')
     .select('latitude,longitude')
@@ -37,11 +43,18 @@ export async function geocodeAddress(
   }
 
   await waitNominatimRateLimit();
-  const q = encodeURIComponent(`${adresse}, ${quartier ?? ''}, Québec, Canada`);
-  const url = `${env.GEOCODING_BASE_URL}?format=json&limit=1&countrycodes=ca&q=${q}`;
+
+  const url = new URL(env.GEOCODING_BASE_URL);
+  url.searchParams.set('q', query);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('countrycodes', 'ca');
 
   const res = await fetch(url, {
-    headers: { 'User-Agent': env.GEOCODING_USER_AGENT },
+    headers: {
+      'User-Agent': env.GEOCODING_USER_AGENT,
+      'Accept-Language': 'fr',
+    },
   });
 
   if (!res.ok) {
@@ -59,18 +72,19 @@ export async function geocodeAddress(
     normalized_address: normalized,
     latitude,
     longitude,
-    provider: 'nominatim',
+    provider: env.GEOCODING_PROVIDER,
     raw_response: results[0],
   });
 
   return { latitude, longitude };
 }
 
+/** Optional fallback when Fast Rental geocoding has not run yet. Prefer Fast Rental `npm run geocode`. */
 export async function runGeocodeBackfill(limit?: number) {
   const batchSize = limit ?? env.GEOCODE_BACKFILL_BATCH_SIZE;
   const { data: rows, error } = await supabaseAdmin
     .from('logements')
-    .select('id,adresse,quartier')
+    .select('id,adresse,quartier,ville')
     .is('latitude', null)
     .is('deleted_at', null)
     .or('geocoding_status.is.null,geocoding_status.eq.pending')
@@ -84,7 +98,8 @@ export async function runGeocodeBackfill(limit?: number) {
 
   for (const row of rows ?? []) {
     try {
-      const normalized = normalizeAddress(`${row.adresse} ${row.quartier ?? ''}`);
+      const query = buildGeocodeQuery(row);
+      const normalized = normalizeGeocodeAddress(query);
       const { data: existingCache } = await supabaseAdmin
         .from('geocode_cache')
         .select('latitude,longitude')
@@ -96,7 +111,7 @@ export async function runGeocodeBackfill(limit?: number) {
         coords = { latitude: existingCache.latitude, longitude: existingCache.longitude };
         cached++;
       } else {
-        coords = await geocodeAddress(row.adresse, row.quartier);
+        coords = await geocodeAddress(row);
       }
 
       if (coords) {

@@ -59,7 +59,7 @@ function setupLeadMocks(options?: {
         chain.eq = vi.fn(() => chain);
         return chain;
       },
-      logements: () => {
+      public_available_listings: () => {
         const chain = createThenableChain({ data: null, error: null });
         chain.maybeSingle = vi.fn(async () => ({
           data:
@@ -87,7 +87,7 @@ describe('POST /api/public/leads', () => {
     vi.mocked(supabaseAdmin.from).mockReset();
   });
 
-  it('returns 201 for valid rappel with logement_id columns', async () => {
+  it('returns 201 for valid rappel with listing_id column', async () => {
     const { insert } = setupLeadMocks();
     const res = await request(app)
       .post('/api/public/leads')
@@ -106,8 +106,9 @@ describe('POST /api/public/leads', () => {
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         type_demande: 'rappel',
-        logement_id: validListingId,
+        listing_id: validListingId,
         ref_agent_id: validAgentId,
+        statut: 'nouveau',
         message: expect.stringContaining('Logement:'),
       }),
     );
@@ -162,7 +163,7 @@ describe('POST /api/public/leads', () => {
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ ref_agent_id: null }));
   });
 
-  it('stores unknown listingId as null without Logement prefix', async () => {
+  it('stores unavailable listingId as null without Logement prefix', async () => {
     const { insert } = setupLeadMocks({ listingExists: false });
     const res = await request(app).post('/api/public/leads').send({
       typeDemande: 'rappel',
@@ -174,9 +175,54 @@ describe('POST /api/public/leads', () => {
     expect(res.status).toBe(201);
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        logement_id: null,
+        listing_id: null,
+        statut: 'nouveau',
         message: 'Bonjour',
       }),
+    );
+  });
+
+  it('strips HTML from nom, telephone, and message', async () => {
+    const { insert } = setupLeadMocks();
+    const res = await request(app).post('/api/public/leads').send({
+      typeDemande: 'rappel',
+      nom: '<b>Jean</b>',
+      telephone: '<script>5145551234</script>',
+      message: '<p>Bonjour</p>',
+      hp: '',
+      lang: 'fr',
+    });
+    expect(res.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nom: 'Jean',
+        telephone: '5145551234',
+        message: 'Bonjour',
+      }),
+    );
+  });
+
+  it('stores prequal dossier TAL in message (shared schema has no dossier_tal column)', async () => {
+    const { insert } = setupLeadMocks();
+    const res = await request(app).post('/api/public/leads').send({
+      typeDemande: 'prequal',
+      nom: 'Marie',
+      telephone: '5145551234',
+      email: 'marie@example.com',
+      revenuMensuel: 3500,
+      dossierTal: true,
+      hp: '',
+      lang: 'fr',
+    });
+    expect(res.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        revenu_mensuel: 3500,
+        message: expect.stringContaining('Dossier TAL: Oui'),
+      }),
+    );
+    expect(insert).toHaveBeenCalledWith(
+      expect.not.objectContaining({ dossier_tal: expect.anything() }),
     );
   });
 

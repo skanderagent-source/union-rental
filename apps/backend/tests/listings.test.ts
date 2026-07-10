@@ -60,12 +60,13 @@ const sampleRows = [
 
 describe('GET /api/public/listings', () => {
   let listChain: ReturnType<typeof createThenableChain>;
+  let mediaChain: ReturnType<typeof createThenableChain>;
 
   beforeEach(() => {
     vi.mocked(signViewUrl).mockClear();
     listChain = createThenableChain({ data: sampleRows, error: null, count: 2 });
 
-    const mediaChain = createThenableChain({
+    mediaChain = createThenableChain({
       data: [
         {
           id: 'media-1',
@@ -93,6 +94,11 @@ describe('GET /api/public/listings', () => {
     expect(chain.order).toHaveBeenNthCalledWith(1, 'approved_image_count', { ascending: false });
     expect(chain.order).toHaveBeenNthCalledWith(2, 'adresse', { ascending: true });
     expect(chain.range).toHaveBeenCalledWith(0, 23);
+  });
+
+  it('only signs thumbnails for completed approved uploads', async () => {
+    await request(app).get('/api/public/listings');
+    expect(mediaChain.not).toHaveBeenCalledWith('upload_completed_at', 'is', null);
   });
 
   it('sanitizes search terms before building the or filter', async () => {
@@ -178,6 +184,7 @@ describe('GET /api/public/listings/:id', () => {
 
     const res = await request(app).get(`/api/public/listings/${sampleRows[0]!.id}`);
     expect(res.status).toBe(200);
+    expect(mediaChain.not).toHaveBeenCalledWith('upload_completed_at', 'is', null);
     expect(res.body.data.media).toHaveLength(2);
     expect(res.body.data.media.every((m: { viewUrl: string }) => m.viewUrl.startsWith('https://'))).toBe(
       true,

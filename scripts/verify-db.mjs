@@ -62,13 +62,24 @@ async function checkView() {
   }
 }
 
+async function checkListingMediaCounts() {
+  const { error } = await admin.from('listing_media_counts').select('listing_id').limit(0);
+  if (error) {
+    console.error('✗ listing_media_counts view:', error.message);
+    console.error('  Run Fast Rental migrations or db/sql/0000_fast_rental_dependencies.sql');
+    failed++;
+  } else {
+    console.log('✓ view listing_media_counts');
+  }
+}
+
 async function checkLeadColumns() {
-  const { data, error } = await admin.from('demandes_clients').select('logement_id,dossier_tal,ref_agent_id').limit(0);
+  const { error } = await admin.from('demandes_clients').select('listing_id,ref_agent_id').limit(0);
   if (error) {
     console.error('✗ demandes_clients columns:', error.message);
     failed++;
   } else {
-    console.log('✓ demandes_clients has logement_id, dossier_tal, ref_agent_id');
+    console.log('✓ demandes_clients has listing_id, ref_agent_id');
   }
 }
 
@@ -88,6 +99,7 @@ async function checkGeocodingColumns() {
 
 await checkTables();
 await checkView();
+await checkListingMediaCounts();
 await checkLeadColumns();
 await checkGeocodingColumns();
 
