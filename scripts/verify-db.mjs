@@ -19,7 +19,7 @@ const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
 let failed = 0;
 
 async function checkTables() {
-  const required = ['logements', 'demandes_clients', 'agents', 'listing_media', 'geocode_cache'];
+  const required = ['logements', 'demandes_clients', 'agents', 'listing_media'];
   const { data, error } = await admin.rpc('union_rental_schema_tables').select();
   if (error) {
     // rpc may not exist — use direct query via postgrest information_schema workaround
@@ -73,6 +73,17 @@ async function checkListingMediaCounts() {
   }
 }
 
+async function checkListingMediaSortOrder() {
+  const { error } = await admin.from('listing_media').select('sort_order').limit(0);
+  if (error) {
+    console.error('✗ listing_media sort_order column:', error.message);
+    console.error('  Apply Fast Rental migration 0008_listing_media_sort_order.sql');
+    failed++;
+  } else {
+    console.log('✓ listing_media has sort_order');
+  }
+}
+
 async function checkLeadColumns() {
   const { error } = await admin.from('demandes_clients').select('listing_id,ref_agent_id').limit(0);
   if (error) {
@@ -83,25 +94,11 @@ async function checkLeadColumns() {
   }
 }
 
-async function checkGeocodingColumns() {
-  const { data, error } = await admin
-    .from('logements')
-    .select('latitude,longitude,deleted_at,geocoding_status,geocoded_at,geocoding_error')
-    .limit(0);
-  if (error) {
-    console.error('✗ logements geocoding columns:', error.message);
-    console.error('  Run db/sql/0000_fast_rental_dependencies.sql if Fast Rental migrations are missing');
-    failed++;
-  } else {
-    console.log('✓ logements geocoding columns');
-  }
-}
-
 await checkTables();
 await checkView();
 await checkListingMediaCounts();
+await checkListingMediaSortOrder();
 await checkLeadColumns();
-await checkGeocodingColumns();
 
 if (failed) {
   console.error(`\n${failed} live DB check(s) failed`);

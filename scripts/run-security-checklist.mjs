@@ -119,6 +119,25 @@ const authHits = walk(frontendSrc).filter((f) => !f.includes('node_modules'));
 if (authHits.length) fail(`Possible auth/supabase in frontend: ${authHits.join(', ')}`);
 else ok('No login/supabase surface in frontend source');
 
+const backendSrc = path.join(root, 'apps/backend/src');
+const leadServicePath = path.join(backendSrc, 'modules/leads/leads.service.ts');
+const leadService = fs.readFileSync(leadServicePath, 'utf8');
+const hasLeadInsert = leadService.includes("from('demandes_clients').insert(");
+if (!hasLeadInsert) {
+  fail('Callback leads must be the only intentional database mutation');
+}
+
+const unexpectedBackendWrites = walk(backendSrc).filter((file) => {
+  if (file === leadServicePath) return false;
+  const text = fs.readFileSync(file, 'utf8');
+  return /\.(?:insert|update|upsert|delete)\s*\(/.test(text);
+});
+if (unexpectedBackendWrites.length) {
+  fail(`Unexpected backend database writes: ${unexpectedBackendWrites.join(', ')}`);
+} else if (hasLeadInsert) {
+  ok('Backend only writes callback leads');
+}
+
 try {
   const tracked = execSync('git ls-files', { encoding: 'utf8', cwd: root });
   for (const line of tracked.split('\n')) {

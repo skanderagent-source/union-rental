@@ -73,6 +73,21 @@ function setupLeadMocks(options?: {
         }));
         return chain;
       },
+      logements: () => {
+        const chain = createThenableChain({ data: null, error: null });
+        chain.maybeSingle = vi.fn(async () => ({
+          data:
+            options?.listingExists === false
+              ? null
+              : {
+                  id: validListingId,
+                  adresse: options?.listingAdresse ?? '100 Rue Test',
+                },
+          error: null,
+        }));
+        chain.is = vi.fn(() => chain);
+        return chain;
+      },
       demandes_clients: () => demandesChain,
     }),
   );
@@ -107,6 +122,7 @@ describe('POST /api/public/leads', () => {
       expect.objectContaining({
         type_demande: 'rappel',
         listing_id: validListingId,
+        logement_id: validListingId,
         ref_agent_id: validAgentId,
         statut: 'nouveau',
         message: expect.stringContaining('Logement:'),

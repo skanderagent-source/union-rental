@@ -2,10 +2,10 @@
 
 ## Prerequisites
 
-- Node.js 20+ (see `.nvmrc`)
+- Node.js 22 (see `.nvmrc`)
 - npm
 - Access to the shared Supabase project service role key
-- R2 read-only credentials for `fast-rental-media`
+- R2 read-only S3-compatible credentials for the same bucket Fast Rental uses
 
 ## Setup
 
@@ -18,11 +18,14 @@ cp apps/frontend/.env.example apps/frontend/.env
 
 Fill `apps/backend/.env` with real credentials. Keep `EMAIL_ENABLED=false` locally unless testing email.
 
-Apply the database view (once, in Supabase SQL Editor):
+For cross-app media testing with Fast Rental's local disk driver (default when R2 keys
+start with `cfat_`), Union auto-detects `../Fast Rental/apps/backend/.local-storage`
+in development and serves those files through its own API. For production-like local
+testing, run Fast Rental with `STORAGE_DRIVER=r2` and the same bucket instead.
 
-```bash
-cat db/sql/union_rental_views.sql
-```
+Apply Fast Rental migrations through `0012_demandes_clients_listing_id.sql` before
+starting Union. Migration `0011` creates the database view; do not run `db push`
+from this repository.
 
 Run verification:
 
@@ -55,8 +58,7 @@ npm run dev:frontend
 - Public site: http://localhost:5174/
 - API health: http://localhost:4001/health
 
-## Optional geocoding backfill
+## Shared-data ownership
 
-```bash
-node scripts/geocode-backfill.mjs --limit=25
-```
+Use Fast Rental to import, edit, geocode, approve, or reorder listings and media. Union Rental
+only reads the shared inventory and creates callback leads.

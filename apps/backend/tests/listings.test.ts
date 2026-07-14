@@ -8,10 +8,9 @@ vi.mock('../src/db/supabaseAdmin.js', () => ({
   supabaseAdmin: { from: vi.fn() },
 }));
 
-vi.mock('../src/modules/media/r2.service.js', () => ({
-  signViewUrl: vi.fn().mockResolvedValue('https://signed.example/view'),
-  signDownloadUrl: vi.fn().mockResolvedValue('https://signed.example/dl'),
-  r2: {},
+vi.mock('../src/modules/media/mediaUrl.service.js', () => ({
+  resolveViewUrl: vi.fn().mockResolvedValue('https://signed.example/view'),
+  resolveDownloadUrl: vi.fn().mockResolvedValue('https://signed.example/dl'),
 }));
 
 vi.mock('resend', () => ({
@@ -22,7 +21,7 @@ vi.mock('resend', () => ({
 
 import { app } from '../src/app.js';
 import { supabaseAdmin } from '../src/db/supabaseAdmin.js';
-import { signViewUrl } from '../src/modules/media/r2.service.js';
+import { resolveViewUrl } from '../src/modules/media/mediaUrl.service.js';
 import { sanitizeSearchTerm } from '../src/utils/sanitize.js';
 
 const sampleRows = [
@@ -63,7 +62,7 @@ describe('GET /api/public/listings', () => {
   let mediaChain: ReturnType<typeof createThenableChain>;
 
   beforeEach(() => {
-    vi.mocked(signViewUrl).mockClear();
+    vi.mocked(resolveViewUrl).mockClear();
     listChain = createThenableChain({ data: sampleRows, error: null, count: 2 });
 
     mediaChain = createThenableChain({
@@ -99,6 +98,8 @@ describe('GET /api/public/listings', () => {
   it('only signs thumbnails for completed approved uploads', async () => {
     await request(app).get('/api/public/listings');
     expect(mediaChain.not).toHaveBeenCalledWith('upload_completed_at', 'is', null);
+    expect(mediaChain.order).toHaveBeenNthCalledWith(1, 'sort_order', { ascending: true });
+    expect(mediaChain.order).toHaveBeenNthCalledWith(2, 'created_at', { ascending: true });
   });
 
   it('sanitizes search terms before building the or filter', async () => {
@@ -129,7 +130,7 @@ describe('GET /api/public/listings', () => {
 
 describe('GET /api/public/listings/:id', () => {
   beforeEach(() => {
-    vi.mocked(signViewUrl).mockClear();
+    vi.mocked(resolveViewUrl).mockClear();
   });
 
   it('returns 404 LISTING_NOT_AVAILABLE for missing listing', async () => {
@@ -152,24 +153,26 @@ describe('GET /api/public/listings/:id', () => {
     expect(res.body.error.code).toBe('LISTING_NOT_AVAILABLE');
   });
 
-  it('returns approved media with signed view URLs', async () => {
+  it('returns approved media ordered by Fast Rental sort order', async () => {
     const detailChain = createThenableChain({ data: sampleRows[0], error: null });
     detailChain.maybeSingle = vi.fn(async () => ({ data: sampleRows[0], error: null }));
     const mediaChain = createThenableChain({
       data: [
         {
-          id: 'media-1',
-          type: 'image',
-          object_key: 'photos/a.jpg',
-          original_filename: 'a.jpg',
-          created_at: '2026-01-01',
-        },
-        {
           id: 'media-2',
           type: 'video',
           object_key: 'videos/a.mp4',
           original_filename: 'a.mp4',
+          sort_order: 0,
           created_at: '2026-01-02',
+        },
+        {
+          id: 'media-1',
+          type: 'image',
+          object_key: 'photos/a.jpg',
+          original_filename: 'a.jpg',
+          sort_order: 1,
+          created_at: '2026-01-01',
         },
       ],
       error: null,
@@ -185,7 +188,10 @@ describe('GET /api/public/listings/:id', () => {
     const res = await request(app).get(`/api/public/listings/${sampleRows[0]!.id}`);
     expect(res.status).toBe(200);
     expect(mediaChain.not).toHaveBeenCalledWith('upload_completed_at', 'is', null);
+    expect(mediaChain.order).toHaveBeenNthCalledWith(1, 'sort_order', { ascending: true });
+    expect(mediaChain.order).toHaveBeenNthCalledWith(2, 'created_at', { ascending: true });
     expect(res.body.data.media).toHaveLength(2);
+    expect(res.body.data.media.map((m: { id: string }) => m.id)).toEqual(['media-2', 'media-1']);
     expect(res.body.data.media.every((m: { viewUrl: string }) => m.viewUrl.startsWith('https://'))).toBe(
       true,
     );

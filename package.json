@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "workspaces": [
     "apps/frontend",
@@ -11,6 +11,7 @@
     "shared"
   ],
   "scripts": {
+    "start": "bash scripts/start-dev.sh",
     "dev": "npm run dev:backend & npm run dev:frontend",
     "dev:frontend": "npm run dev --workspace @union-rental/frontend",
     "dev:backend": "npm run dev --workspace @union-rental/backend",
@@ -27,16 +28,19 @@
     "extract-legacy-assets": "node scripts/extract-legacy-assets.mjs",
     "extract-legacy-css": "node scripts/extract-legacy-css.mjs",
     "apply-cutover": "node scripts/apply-cutover.mjs",
-    "send-test-email": "node scripts/send-test-email.mjs",
-    "geocode-backfill": "node scripts/geocode-backfill.mjs"
+    "send-test-email": "node scripts/send-test-email.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.49.1",
+    "@supabase/supabase-js": "^2.110.3",
     "dotenv": "^16.4.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
-    "vercel": "^54.20.1"
+    "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "@supabase/supabase-js": "^2.110.3",
+    "tar": "^7.5.20",
+    "js-yaml": "^4.1.1"
   }
 }

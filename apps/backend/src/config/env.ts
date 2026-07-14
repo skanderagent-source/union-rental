@@ -1,7 +1,17 @@
 import { config } from 'dotenv';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function defaultFastRentalLocalStorageRoot(): string | undefined {
+  const sibling = path.resolve(__dirname, '../../../../../Fast Rental/apps/backend/.local-storage');
+  return existsSync(sibling) ? sibling : undefined;
+}
 
 const envSchema = z
   .object({
@@ -24,15 +34,7 @@ const envSchema = z
     EMAIL_FROM: z.string().optional(),
     EMAIL_REPLY_TO: z.string().optional(),
     FAST_RENTAL_APP_URL: z.string().optional(),
-    GEOCODING_PROVIDER: z.string().default('nominatim'),
-    GEOCODING_USER_AGENT: z.string().min(1),
-    GEOCODING_BASE_URL: z.string().url(),
-    GEOCODE_BACKFILL_ENABLED: z
-      .string()
-      .optional()
-      .transform((v) => v === 'true'),
-    GEOCODE_BACKFILL_BATCH_SIZE: z.coerce.number().default(50),
-    CRON_GEOCODE_BACKFILL: z.string().default('0 4 * * *'),
+    FAST_RENTAL_LOCAL_STORAGE_ROOT: z.string().optional(),
     RATE_LIMIT_LEADS_WINDOW_MS: z.coerce.number().default(60000),
     RATE_LIMIT_LEADS_MAX: z.coerce.number().default(20),
     RATE_LIMIT_READS_WINDOW_MS: z.coerce.number().default(60000),
@@ -63,4 +65,9 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data;
+export const env = {
+  ...parsed.data,
+  FAST_RENTAL_LOCAL_STORAGE_ROOT:
+    parsed.data.FAST_RENTAL_LOCAL_STORAGE_ROOT ??
+    (parsed.data.NODE_ENV === 'development' ? defaultFastRentalLocalStorageRoot() : undefined),
+};

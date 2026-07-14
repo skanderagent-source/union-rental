@@ -9,8 +9,7 @@ Edit `apps/backend/.env` with real values from the password manager / dashboards
 | Variable | Source |
 |----------|--------|
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → service_role |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Cloudflare R2 read-only token for `fast-rental-media` |
-| `GEOCODING_USER_AGENT` | `UnionRental/1.0 you@yourdomain.com` (real contact email) |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Cloudflare R2 read-only, S3-compatible token for Fast Rental's shared `R2_BUCKET` |
 | `RESEND_API_KEY` | Resend dashboard (optional until email testing) |
 
 Placeholders like `your-service-role-key` are detected by `npm run verify-env`.
@@ -19,16 +18,15 @@ Placeholders like `your-service-role-key` are detected by `npm run verify-env`.
 
 In Supabase SQL Editor:
 
-1. Run checks from `docs/database.md`
-2. If missing objects: `db/sql/0000_fast_rental_dependencies.sql`
-3. Always: `db/sql/union_rental_views.sql`
+1. Apply Fast Rental migrations `0008`–`0012` from the Fast Rental repo.
+2. Run checks from `docs/database.md`.
+3. If missing objects: `db/sql/0000_fast_rental_dependencies.sql`.
 
 Verify: `npm run verify-db`
 
 ## 3. Local smoke
 
 ```bash
-npm run geocode-backfill -- --limit=25
 npm run dev:backend    # terminal 1
 npm run dev:frontend   # terminal 2
 npm run smoke

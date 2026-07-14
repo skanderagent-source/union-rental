@@ -30,15 +30,17 @@ npm run dev:frontend  # port 5174
 | `npm run extract-legacy-assets` | Extract base64 images from legacy HTML |
 | `npm run extract-legacy-css` | Extract legacy CSS into theme + legacy-styles |
 | `npm run apply-cutover` | Generate Vercel redirect for old static project |
-| `npm run geocode-backfill` | Manual geocoding backfill |
 
 ## Architecture
 
 - **Frontend**: React + Vite on Vercel (port 5174 locally)
 - **Backend**: Node + Express on VPS behind Caddy (port 4001 locally)
 - **Database**: Shared Supabase project (schema owned by Fast Rental repo)
-- **Media**: Read-only signed URLs from `fast-rental-media` R2 bucket
+- **Media**: Read-only signed URLs from Fast Rental's shared R2 bucket
 - **Email**: Resend (backend only)
+
+Fast Rental owns inventory, media, and geocoding writes. Union Rental only reads public listings
+and creates callback leads.
 
 See `docs/local-development.md`, `docs/deployment.md`, `docs/database.md`, `docs/operations.md`, `docs/security.md`, and `docs/zero-gap-guide.md`.
 

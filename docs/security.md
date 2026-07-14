@@ -10,7 +10,7 @@ Run this checklist before and after cutover. Automated checks: `npm run security
 
 ## R2
 
-- [ ] Token is **read-only** and scoped to `fast-rental-media` bucket only
+- [ ] Token is **read-only**, S3-compatible, and scoped to Fast Rental's shared R2 bucket only
 - [x] Union Rental backend never uploads or deletes objects (code review)
 
 ## API surface
@@ -19,6 +19,7 @@ Run this checklist before and after cutover. Automated checks: `npm run security
 - [ ] Manually inspect one `/api/public/listings` and one detail response in production for leaks (`code_entree`, `concierge_tel`, `sheet_row_id`)
 - [ ] Review `notes` column with product owner — publicly visible by design (legacy parity)
 - [x] No auth routes; no Supabase Auth calls in frontend
+- [x] Union backend only mutates `demandes_clients` for callback leads; Fast Rental owns inventory and media writes
 - [ ] CORS allows production domain only (+ localhost in development) — verify on VPS after deploy
 
 ## Abuse controls

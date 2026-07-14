@@ -9,7 +9,8 @@ import {
   type PublicMediaItem,
 } from '@union-rental/shared';
 import { supabaseAdmin } from '../../db/supabaseAdmin.js';
-import { signViewUrl, signDownloadUrl } from '../media/r2.service.js';
+import { resolveViewUrl, resolveDownloadUrl } from '../media/mediaUrl.service.js';
+import { openLocalObject, localObjectExists } from '../media/localStorage.service.js';
 import { sanitizeSearchTerm } from '../../utils/sanitize.js';
 import { HttpError } from '../../utils/httpErrors.js';
 
@@ -51,6 +52,7 @@ async function attachThumbnails(rows: ViewRow[]): Promise<PublicListing[]> {
     .eq('status', 'approved')
     .not('upload_completed_at', 'is', null)
     .eq('type', 'image')
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
   const firstByListing = new Map<string, { object_key: string; original_filename: string }>();
@@ -63,7 +65,7 @@ async function attachThumbnails(rows: ViewRow[]): Promise<PublicListing[]> {
   const thumbUrls = new Map<string, string>();
   await Promise.all(
     [...firstByListing.entries()].map(async ([listingId, media]) => {
-      const url = await signViewUrl(media.object_key);
+      const url = await resolveViewUrl(media.object_key, media.original_filename);
       thumbUrls.set(listingId, url);
     }),
   );
@@ -136,23 +138,18 @@ export async function getPublicListingById(id: string): Promise<PublicListingDet
   const row = data as ViewRow;
   const { data: mediaRows } = await supabaseAdmin
     .from('listing_media')
-    .select('id,type,object_key,original_filename,created_at')
+    .select('id,type,object_key,original_filename,sort_order,created_at')
     .eq('listing_id', id)
     .eq('status', 'approved')
     .not('upload_completed_at', 'is', null)
-    .order('type', { ascending: true })
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
-  const sorted = (mediaRows ?? []).sort((a, b) => {
-    if (a.type === b.type) return 0;
-    return a.type === 'image' ? -1 : 1;
-  });
-
   const media: PublicMediaItem[] = await Promise.all(
-    sorted.map(async (m) => ({
+    (mediaRows ?? []).map(async (m) => ({
       id: m.id,
       type: m.type as 'image' | 'video',
-      viewUrl: await signViewUrl(m.object_key),
+      viewUrl: await resolveViewUrl(m.object_key, m.original_filename),
       originalFilename: m.original_filename,
     })),
   );
@@ -250,6 +247,40 @@ export async function getMediaDownloadUrl(mediaId: string) {
     throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
   }
 
-  const url = await signDownloadUrl(media.object_key, media.original_filename);
+  const url = await resolveDownloadUrl(media.object_key, media.original_filename);
   return { url, expiresInSeconds: 300 };
+}
+
+export async function servePublicMediaObject(objectKey: string, inline: boolean) {
+  if (!objectKey || !(await localObjectExists(objectKey))) {
+    throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
+  }
+
+  const { data: media, error } = await supabaseAdmin
+    .from('listing_media')
+    .select('status,mime_type,upload_completed_at,original_filename,listing_id')
+    .eq('object_key', objectKey)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!media?.upload_completed_at || media.status !== 'approved') {
+    throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
+  }
+
+  const { data: listing } = await supabaseAdmin
+    .from('logements')
+    .select('deleted_at')
+    .eq('id', media.listing_id)
+    .maybeSingle();
+
+  if (!listing || listing.deleted_at) {
+    throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
+  }
+
+  return {
+    stream: openLocalObject(objectKey),
+    mimeType: media.mime_type ?? 'application/octet-stream',
+    filename: media.original_filename,
+    inline,
+  };
 }

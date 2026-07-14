@@ -21,13 +21,23 @@ async function validateListing(listingId: string | null | undefined): Promise<{
   adresse: string | null;
 }> {
   if (!listingId) return { id: null, adresse: null };
+
   const { data } = await supabaseAdmin
     .from('public_available_listings')
     .select('id,adresse')
     .eq('id', listingId)
     .maybeSingle();
-  if (!data) return { id: null, adresse: null };
-  return { id: data.id, adresse: data.adresse };
+  if (data) return { id: data.id, adresse: data.adresse };
+
+  const { data: fallback } = await supabaseAdmin
+    .from('logements')
+    .select('id,adresse')
+    .eq('id', listingId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (fallback) return { id: fallback.id, adresse: fallback.adresse };
+
+  return { id: null, adresse: null };
 }
 
 export async function createPublicLead(input: CreateLeadBody) {
@@ -62,7 +72,7 @@ export async function createPublicLead(input: CreateLeadBody) {
 
   const email = input.email?.trim() || null;
 
-  const { error } = await supabaseAdmin.from('demandes_clients').insert({
+  const insertRow: Record<string, unknown> = {
     type_demande: input.typeDemande,
     listing_id: listing.id,
     ref_agent_id: validRefAgentId,
@@ -73,7 +83,17 @@ export async function createPublicLead(input: CreateLeadBody) {
     revenu_mensuel: input.typeDemande === 'prequal' ? input.revenuMensuel : null,
     date_demenagement: input.dateDemenagement ?? null,
     message: composedMessage,
-  });
+  };
+
+  if (listing.id) {
+    insertRow.logement_id = listing.id;
+  }
+
+  let { error } = await supabaseAdmin.from('demandes_clients').insert(insertRow);
+  if (error && listing.id && /logement_id/i.test(error.message ?? '')) {
+    const { logement_id: _legacy, ...withoutLegacy } = insertRow;
+    ({ error } = await supabaseAdmin.from('demandes_clients').insert(withoutLegacy));
+  }
 
   if (error) throw error;
 

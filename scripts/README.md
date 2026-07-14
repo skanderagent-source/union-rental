@@ -2,6 +2,7 @@
 
 | Script | Purpose |
 |--------|---------|
+| `start-dev.sh` | Install deps, bootstrap `.env`, verify, start backend + frontend |
 | `verify-env.mjs` | Validate `.env` structure; warn on placeholder secrets |
 | `smoke-api.mjs` | Build, test, health + live API smoke (when credentialed) |
 | `run-security-checklist.mjs` | Phase 24 automated security checks |
@@ -14,7 +15,6 @@
 | `verify-cutover.mjs` | Cutover repo state |
 | `verify-dns.mjs` | DNS propagation (`FRONTEND_DOMAIN`, `API_DOMAIN`) |
 | `post-dns-checklist.mjs` | Post-DNS manual reminders |
-| `geocode-backfill.mjs` | Manual geocoding backfill |
 | `send-test-email.mjs` | Resend test send |
 | `extract-legacy-assets.mjs` | Extract base64 images from `legacy/index.html` |
 | `extract-legacy-css.mjs` | Extract `:root` → `theme.css`, rest → `legacy-styles.css` |

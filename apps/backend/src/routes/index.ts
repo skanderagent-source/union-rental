@@ -9,6 +9,7 @@ import {
   getPublicStats,
   getQuartierCounts,
   getMediaDownloadUrl,
+  servePublicMediaObject,
 } from '../modules/listings/listings.service.js';
 import { createPublicLead } from '../modules/leads/leads.service.js';
 import type { PublicListingsQuery } from '@union-rental/shared';
@@ -61,6 +62,25 @@ listingsRouter.get(
   asyncHandler(async (_req, res) => {
     const data = await getQuartierCounts();
     res.json({ data });
+  }),
+);
+
+listingsRouter.get(
+  '/media/object',
+  asyncHandler(async (req, res) => {
+    const objectKey = String(req.query.key ?? '');
+    const inline = req.query.inline !== '0';
+    const { stream, mimeType, filename, inline: serveInline } = await servePublicMediaObject(
+      objectKey,
+      inline,
+    );
+    const safe = filename.replace(/[^\w.\- ]/g, '_');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      serveInline ? 'inline' : `attachment; filename="${safe}"`,
+    );
+    stream.pipe(res);
   }),
 );
 

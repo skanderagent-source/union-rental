@@ -5,6 +5,10 @@ function isPlaceholder(value) {
   return /your-|changeme|xxx|YOUR_|example\.com/i.test(String(value));
 }
 
+function isS3CompatibleR2AccessKey(value) {
+  return !!value && !isPlaceholder(value) && !String(value).startsWith('cfat_');
+}
+
 export function credentialStatus() {
   const be = { ...backendEnv(), ...process.env };
   const fe = { ...frontendEnv(), ...process.env };
@@ -16,16 +20,13 @@ export function credentialStatus() {
     },
     r2: {
       account: !!be.R2_ACCOUNT_ID && !isPlaceholder(be.R2_ACCOUNT_ID),
-      accessKey: !!be.R2_ACCESS_KEY_ID && !isPlaceholder(be.R2_ACCESS_KEY_ID),
+      accessKey: isS3CompatibleR2AccessKey(be.R2_ACCESS_KEY_ID),
       secret: !!be.R2_SECRET_ACCESS_KEY && !isPlaceholder(be.R2_SECRET_ACCESS_KEY),
       bucket: !!be.R2_BUCKET && !isPlaceholder(be.R2_BUCKET),
     },
     email: {
       resend: !!be.RESEND_API_KEY && !isPlaceholder(be.RESEND_API_KEY),
       enabled: String(be.EMAIL_ENABLED).toLowerCase() === 'true',
-    },
-    geocoding: {
-      userAgent: !!be.GEOCODING_USER_AGENT && !isPlaceholder(be.GEOCODING_USER_AGENT),
     },
     frontend: {
       apiBase: !!fe.VITE_API_BASE_URL && !isPlaceholder(fe.VITE_API_BASE_URL),

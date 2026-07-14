@@ -1,4 +1,5 @@
--- Union Rental public read model. Depends on Fast Rental migrations 0001+ (listing_media_counts, deleted_at).
+-- Union Rental public read model. Fast Rental owns the underlying schema.
+-- Orcha imports are paused, so historic Orcha rows stay out of public inventory.
 create or replace view public.public_available_listings as
 select
   l.id, l.adresse, l.quartier, l.prix, l.taille, l.electromenagers,
@@ -8,6 +9,7 @@ select
 from public.logements l
 left join public.listing_media_counts c on c.listing_id = l.id
 where l.statut = 'Available'
-  and l.deleted_at is null;
+  and l.deleted_at is null
+  and coalesce(lower(l.source), '') <> 'orcha';
 
 revoke select on public.public_available_listings from anon, authenticated;

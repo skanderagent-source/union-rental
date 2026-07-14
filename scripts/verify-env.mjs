@@ -18,12 +18,6 @@ const backendExample = [
   'EMAIL_FROM',
   'EMAIL_REPLY_TO',
   'FAST_RENTAL_APP_URL',
-  'GEOCODING_PROVIDER',
-  'GEOCODING_USER_AGENT',
-  'GEOCODING_BASE_URL',
-  'GEOCODE_BACKFILL_ENABLED',
-  'GEOCODE_BACKFILL_BATCH_SIZE',
-  'CRON_GEOCODE_BACKFILL',
   'RATE_LIMIT_LEADS_WINDOW_MS',
   'RATE_LIMIT_LEADS_MAX',
   'RATE_LIMIT_READS_WINDOW_MS',
@@ -92,12 +86,17 @@ if (backendEnv) {
     'R2_ACCOUNT_ID',
     'R2_ACCESS_KEY_ID',
     'R2_SECRET_ACCESS_KEY',
-    'GEOCODING_USER_AGENT',
+    'R2_BUCKET',
   ]) {
     const val = backendEnv.get(key);
     if (val && isPlaceholder(val)) {
       warnings.push(`${key} still has placeholder value — live API/deploy will fail until replaced`);
     }
+  }
+  if (backendEnv.get('R2_ACCESS_KEY_ID')?.startsWith('cfat_')) {
+    warnings.push(
+      'R2_ACCESS_KEY_ID looks like a Cloudflare API token; configure an S3-compatible R2 access-key pair instead',
+    );
   }
 }
 

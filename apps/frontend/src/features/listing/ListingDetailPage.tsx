@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SIZE_LABELS, type PublicListingDetail } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useContactModal } from '@/app/providers/ContactModalProvider';
+import { useToast } from '@/app/providers/ToastProvider';
 import { api } from '@/lib/apiClient';
 import { fmtPriceMonth } from '@/lib/format';
 import { Footer } from '@/components/layout/Footer';
@@ -14,7 +15,22 @@ export function ListingDetailPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { openContact } = useContactModal();
+  const { showToast } = useToast();
   const [activeImage, setActiveImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [lightboxOpen]);
 
   const query = useQuery({
     queryKey: ['listing', id],
@@ -57,9 +73,18 @@ export function ListingDetailPage() {
   const videos = listing.media.filter((m) => m.type === 'video');
   const mainImage = images[activeImage]?.viewUrl ?? images[0]?.viewUrl;
 
-  const downloadMedia = async (mediaId: string) => {
-    const { url } = await api.get<{ url: string }>(`/api/public/media/${mediaId}/download-url`);
-    window.open(url, '_blank');
+  const shareListing = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      showToast(t('detail.linkCopied'));
+    } catch {
+      showToast(t('toast.error'));
+    }
+  };
+
+  const goToImage = (direction: -1 | 1) => {
+    if (images.length <= 1) return;
+    setActiveImage((idx) => (idx + direction + images.length) % images.length);
   };
 
   return (
@@ -92,15 +117,34 @@ export function ListingDetailPage() {
 
         <div className="detail-gallery">
           {mainImage ? (
-            <div className="media-tile">
-              <img src={mainImage} alt={listing.adresse} className="detail-main-photo" />
+            <div className="detail-main-photo-wrap">
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="gallery-nav detail-gallery-nav detail-gallery-nav-prev"
+                    aria-label={t('detail.prevPhoto')}
+                    onClick={() => goToImage(-1)}
+                  >
+                    &lt;
+                  </button>
+                  <button
+                    type="button"
+                    className="gallery-nav detail-gallery-nav detail-gallery-nav-next"
+                    aria-label={t('detail.nextPhoto')}
+                    onClick={() => goToImage(1)}
+                  >
+                    &gt;
+                  </button>
+                </>
+              )}
               <button
                 type="button"
-                className="media-download"
-                aria-label={t('media.downloadAria')}
-                onClick={() => downloadMedia(images[activeImage]?.id ?? images[0]!.id)}
+                className="detail-main-photo-trigger"
+                onClick={() => setLightboxOpen(true)}
+                aria-label={t('detail.expandPhoto')}
               >
-                {t('media.download')}
+                <img src={mainImage} alt={listing.adresse} className="detail-main-photo" />
               </button>
             </div>
           ) : (
@@ -118,7 +162,10 @@ export function ListingDetailPage() {
                   src={img.viewUrl}
                   alt=""
                   className={idx === activeImage ? 'active' : ''}
-                  onClick={() => setActiveImage(idx)}
+                  onClick={() => {
+                    setActiveImage(idx);
+                    setLightboxOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -127,30 +174,101 @@ export function ListingDetailPage() {
             <>
               <h3>{t('detail.videos')}</h3>
               {videos.map((vid) => (
-                <div key={vid.id} className="media-tile">
-                  <video controls preload="metadata" src={vid.viewUrl} style={{ width: '100%', borderRadius: 14 }} />
-                  <button
-                    type="button"
-                    className="media-download"
-                    aria-label={t('media.downloadAria')}
-                    onClick={() => downloadMedia(vid.id)}
-                  >
-                    {t('media.download')}
-                  </button>
-                </div>
+                <video
+                  key={vid.id}
+                  controls
+                  preload="metadata"
+                  src={vid.viewUrl}
+                  style={{ width: '100%', borderRadius: 14 }}
+                />
               ))}
             </>
           )}
         </div>
 
-        <button
-          type="button"
-          className="btn-submit detail-cta"
-          onClick={() => openContact(listing)}
-        >
-          {t('listing.btnInterested')}
-        </button>
+        <div className="detail-actions">
+          <button
+            type="button"
+            className="btn-submit detail-cta"
+            onClick={() => openContact(listing)}
+          >
+            {t('listing.btnInterested')}
+          </button>
+          <button
+            type="button"
+            className="btn-share"
+            aria-label={t('detail.shareAria')}
+            onClick={() => void shareListing()}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {lightboxOpen && mainImage && (
+        <div
+          className="lightbox-overlay"
+          onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('detail.expandPhoto')}
+        >
+          <button
+            type="button"
+            className="lightbox-close"
+            aria-label={t('detail.closeLightbox')}
+            onClick={() => setLightboxOpen(false)}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M18 6L6 18M6 6l12 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+          <div className="lightbox-stage" onClick={(e) => e.stopPropagation()}>
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="gallery-nav lightbox-nav lightbox-nav-prev"
+                  aria-label={t('detail.prevPhoto')}
+                  onClick={() => goToImage(-1)}
+                >
+                  &lt;
+                </button>
+                <button
+                  type="button"
+                  className="gallery-nav lightbox-nav lightbox-nav-next"
+                  aria-label={t('detail.nextPhoto')}
+                  onClick={() => goToImage(1)}
+                >
+                  &gt;
+                </button>
+              </>
+            )}
+            <img src={mainImage} alt={listing.adresse} className="lightbox-image" />
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );

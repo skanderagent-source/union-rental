@@ -28,13 +28,14 @@ function need(rel, snippets = []) {
 
 need('db/sql/0000_fast_rental_dependencies.sql', [
   'listing_media',
-  'geocode_cache',
   'listing_media_counts',
-  'geocoding_status',
+  'sort_order',
+  'security_invoker',
 ]);
 need('db/sql/union_rental_views.sql', [
   'public_available_listings',
   'revoke select',
+  "lower(l.source), '') <> 'orcha'",
 ]);
 
 const listingsService = fs.readFileSync(
@@ -46,6 +47,13 @@ if (!listingsService.includes("from('public_available_listings')")) {
   failed++;
 } else {
   console.log('✓ listings.service.ts uses public_available_listings');
+}
+
+if (!listingsService.includes(".order('sort_order'")) {
+  console.error('✗ listings.service.ts must order media by sort_order');
+  failed++;
+} else {
+  console.log('✓ listings.service.ts orders media by sort_order');
 }
 
 if (failed) process.exit(1);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useContactModal } from '@/app/providers/ContactModalProvider';
 import { useToast } from '@/app/providers/ToastProvider';
@@ -10,6 +11,7 @@ import { PrequalForm } from './PrequalForm';
 
 export function ContactModal() {
   const { t, lang } = useI18n();
+  const { id: listingIdFromRoute } = useParams();
   const { isOpen, closeContact, contactListing } = useContactModal();
   const { showToast } = useToast();
   const [tab, setTab] = useState<'rappel' | 'prequal'>('rappel');
@@ -29,7 +31,7 @@ export function ContactModal() {
     try {
       await api.post('/api/public/leads', {
         ...payload,
-        listingId: contactListing?.id ?? null,
+        listingId: contactListing?.id ?? listingIdFromRoute ?? null,
         refAgentId: getActiveReferral(),
         lang,
       });
