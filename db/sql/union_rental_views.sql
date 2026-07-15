@@ -3,7 +3,7 @@
 create or replace view public.public_available_listings as
 select
   l.id, l.adresse, l.quartier, l.prix, l.taille, l.electromenagers,
-  l.notes, l.statut, l.source, l.latitude, l.longitude,
+  l.notes, l.statut, l.latitude, l.longitude,
   coalesce(c.approved_image_count, 0) as approved_image_count,
   coalesce(c.approved_media_count, 0) as approved_media_count
 from public.logements l

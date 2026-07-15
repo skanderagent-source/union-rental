@@ -29,7 +29,7 @@ export function HomePage() {
     queryKey: ['preview-listings'],
     queryFn: () =>
       api.get<{ items: import('@union-rental/shared').PublicListing[] }>(
-        '/api/public/listings?pageSize=3',
+        '/api/public/listings?pageSize=4',
       ),
   });
 

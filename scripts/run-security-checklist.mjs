@@ -9,7 +9,7 @@ import { backendEnv, rootDir } from './lib/env.mjs';
 
 const PUBLIC_LISTING_FIELDS = [
   'id', 'adresse', 'quartier', 'prix', 'taille', 'electromenagers', 'notes',
-  'statut', 'source', 'latitude', 'longitude',
+  'statut', 'latitude', 'longitude',
 ];
 
 const errors = [];
@@ -66,7 +66,7 @@ const viewSql = fs.readFileSync(path.join(root, 'db/sql/union_rental_views.sql')
 if (viewSql.includes('revoke select')) ok('public_available_listings revokes anon/authenticated');
 else fail('View must revoke anon/authenticated select');
 
-const forbiddenFields = ['code_entree', 'concierge_tel', 'sheet_row_id'];
+const forbiddenFields = ['code_entree', 'concierge_tel', 'sheet_row_id', 'source'];
 for (const field of forbiddenFields) {
   if (PUBLIC_LISTING_FIELDS.includes(field)) fail(`${field} in PUBLIC_LISTING_FIELDS`);
 }

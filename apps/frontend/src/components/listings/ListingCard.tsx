@@ -52,9 +52,6 @@ export function ListingCard({ listing, onNavigate, compact }: Props) {
         <span className={compact ? 'prev-badge' : 'listing-badge badge-available'}>
           {t('badge.available')}
         </span>
-        <span className={compact ? 'prev-source' : 'listing-source'}>
-          {listing.source ?? 'LogiGo'}
-        </span>
       </div>
       <div className={compact ? 'prev-body' : 'listing-body'}>
         <div className={compact ? 'prev-area' : 'listing-area'}>

@@ -61,7 +61,6 @@ export const PUBLIC_LISTING_FIELDS = [
   'electromenagers',
   'notes',
   'statut',
-  'source',
   'latitude',
   'longitude',
 ] as const;

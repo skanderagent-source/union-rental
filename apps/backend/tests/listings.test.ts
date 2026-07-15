@@ -119,6 +119,7 @@ describe('GET /api/public/listings', () => {
     for (const field of PUBLIC_LISTING_FIELDS) {
       expect(res.body.data.items[0]).toHaveProperty(field === 'id' ? 'id' : field);
     }
+    expect(res.body.data.items[0]).not.toHaveProperty('source');
     expect(res.body.data.items[0].thumbnailUrl).toBe('https://signed.example/view');
     expect(res.body.data.items[1].thumbnailUrl).toBeNull();
     expect(res.body.data.items[0]).toHaveProperty('approvedImageCount');
@@ -233,6 +234,7 @@ describe('GET /api/public/listings/:id', () => {
     expect(res.body.data.media.every((m: { viewUrl: string }) => m.viewUrl.startsWith('https://'))).toBe(
       true,
     );
+    expect(res.body.data).not.toHaveProperty('source');
   });
 });
 

@@ -102,7 +102,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:500;height:66px;background:rgba(
 .preview-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px}
 .btn-voir-tout{padding:10px 20px;background:var(--blue-light);color:var(--blue);font-size:14px;font-weight:600;border:1.5px solid #bfdbfe;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s}
 .btn-voir-tout:hover{background:var(--blue);color:#fff}
-.preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.preview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
 .prev-card{border-radius:var(--radius);overflow:hidden;border:1.5px solid var(--border);background:var(--white);cursor:pointer;transition:all .25s;box-shadow:var(--shadow)}
 .prev-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--blue)}
 .prev-photo{height:200px;overflow:hidden;position:relative}

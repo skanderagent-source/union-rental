@@ -20,7 +20,6 @@ export type PublicListing = {
   electromenagers: string | null;
   notes: string | null;
   statut: string;
-  source: string | null;
   latitude: number | null;
   longitude: number | null;
   approvedImageCount: number;

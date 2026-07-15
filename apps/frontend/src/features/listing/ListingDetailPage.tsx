@@ -125,29 +125,85 @@ export function ListingDetailPage() {
         <button type="button" className="detail-back" onClick={() => navigate('/inventaire')}>
           {t('detail.back')}
         </button>
-        <div className="detail-header">
-          <div className="listing-area">{listing.quartier ?? t('cityFallback')}</div>
-          <h1>{listing.adresse}</h1>
-          <span className="listing-badge badge-available">{t('badge.available')}</span>
-          <div className="listing-price" style={{ marginTop: 12 }}>
-            {listing.prix != null
-              ? fmtPriceMonth(listing.prix, lang, t)
-              : t('listing.priceOnRequest')}
-          </div>
-          <div className="listing-meta" style={{ marginTop: 12 }}>
-            {listing.taille && (
-              <span className="listing-tag">
-                📐 {SIZE_LABELS[listing.taille] ?? listing.taille} {t('sizeSuffix')}
-              </span>
-            )}
-            {listing.electromenagers && (
-              <span className="listing-tag">🍳 {listing.electromenagers}</span>
-            )}
-          </div>
-          {listing.notes && <p style={{ marginTop: 12, color: 'var(--text2)' }}>{listing.notes}</p>}
-        </div>
 
-        <div className="detail-gallery">
+        <div className="detail-layout">
+          <aside className="detail-info">
+            <div className="detail-info-card">
+              <div className="detail-info-top">
+                <div className="listing-area">{listing.quartier ?? t('cityFallback')}</div>
+                <h1>{listing.adresse}</h1>
+                <span className="detail-status-badge badge-available">{t('badge.available')}</span>
+              </div>
+
+              <div className="detail-price-block">
+                <span className="detail-price-label">{t('detail.price')}</span>
+                <div className="listing-price">
+                  {listing.prix != null
+                    ? fmtPriceMonth(listing.prix, lang, t)
+                    : t('listing.priceOnRequest')}
+                </div>
+              </div>
+
+              <dl className="detail-specs">
+                {listing.taille && (
+                  <div className="detail-spec">
+                    <dt>{t('detail.size')}</dt>
+                    <dd>
+                      {SIZE_LABELS[listing.taille] ?? listing.taille} {t('sizeSuffix')}
+                    </dd>
+                  </div>
+                )}
+                {listing.electromenagers && (
+                  <div className="detail-spec">
+                    <dt>{t('detail.appliances')}</dt>
+                    <dd>{listing.electromenagers}</dd>
+                  </div>
+                )}
+              </dl>
+
+              {listing.notes && (
+                <div className="detail-notes">
+                  <h2 className="detail-notes-title">{t('detail.notes')}</h2>
+                  <p>{listing.notes}</p>
+                </div>
+              )}
+
+              <div className="detail-actions">
+                <button
+                  type="button"
+                  className="btn-submit detail-cta"
+                  onClick={() => openContact(listing)}
+                >
+                  {t('listing.btnInterested')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-share"
+                  aria-label={t('detail.shareAria')}
+                  onClick={() => void shareListing()}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <div className="detail-gallery">
           {current ? (
             <div className="detail-main-photo-wrap">
               {hasMultiple && (
@@ -224,39 +280,7 @@ export function ListingDetailPage() {
               ))}
             </div>
           )}
-        </div>
-
-        <div className="detail-actions">
-          <button
-            type="button"
-            className="btn-submit detail-cta"
-            onClick={() => openContact(listing)}
-          >
-            {t('listing.btnInterested')}
-          </button>
-          <button
-            type="button"
-            className="btn-share"
-            aria-label={t('detail.shareAria')}
-            onClick={() => void shareListing()}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          </div>
         </div>
       </div>
 
