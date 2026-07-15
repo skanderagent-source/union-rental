@@ -10,6 +10,10 @@ import { hasLiveSupabase } from './lib/credentials.mjs';
 const root = rootDir();
 const apiBase = process.env.SMOKE_API_BASE_URL ?? 'http://localhost:4001';
 
+function unwrapData(body) {
+  return body?.data ?? body;
+}
+
 console.log('== Union Rental automated smoke ==\n');
 
 if (!process.env.SMOKE_SKIP_BUILD) {
@@ -40,28 +44,32 @@ if (!hasLiveSupabase()) {
 
 console.log('\n== Live public API ==');
 const listings = await fetchJson(`${apiBase}/api/public/listings?pageSize=3`);
-if (!listings.res.ok || !Array.isArray(listings.body?.items)) {
+const listingsData = unwrapData(listings.body);
+if (!listings.res.ok || !Array.isArray(listingsData?.items)) {
   throw new Error(`listings failed: ${listings.res.status} ${JSON.stringify(listings.body)}`);
 }
-console.log(`✓ GET /api/public/listings (${listings.body.items.length} items, total ${listings.body.total})`);
+console.log(`✓ GET /api/public/listings (${listingsData.items.length} items, total ${listingsData.total})`);
 
 const stats = await fetchJson(`${apiBase}/api/public/stats`);
-if (!stats.res.ok || typeof stats.body?.availableListings !== 'number') {
+const statsData = unwrapData(stats.body);
+if (!stats.res.ok || typeof statsData?.availableListings !== 'number') {
   throw new Error(`stats failed: ${stats.res.status}`);
 }
 console.log('✓ GET /api/public/stats');
 
 const quartiers = await fetchJson(`${apiBase}/api/public/quartiers`);
-if (!quartiers.res.ok || !Array.isArray(quartiers.body)) {
+const quartiersData = unwrapData(quartiers.body);
+if (!quartiers.res.ok || !Array.isArray(quartiersData)) {
   throw new Error(`quartiers failed: ${quartiers.res.status}`);
 }
 console.log('✓ GET /api/public/quartiers');
 
 const map = await fetchJson(`${apiBase}/api/public/listings/map`);
-if (!map.res.ok || !Array.isArray(map.body)) {
+const mapData = unwrapData(map.body);
+if (!map.res.ok || !Array.isArray(mapData)) {
   throw new Error(`map failed: ${map.res.status}`);
 }
-console.log(`✓ GET /api/public/listings/map (${map.body.length} markers)`);
+console.log(`✓ GET /api/public/listings/map (${mapData.length} markers)`);
 
 console.log('\n== Honeypot lead ==');
 const honeypot = await fetchJson(`${apiBase}/api/public/leads`, {
@@ -75,10 +83,52 @@ const honeypot = await fetchJson(`${apiBase}/api/public/leads`, {
     lang: 'fr',
   }),
 });
-if (!honeypot.res.ok || honeypot.body?.received !== true) {
+if (!honeypot.res.ok || unwrapData(honeypot.body)?.received !== true) {
   throw new Error(`honeypot lead failed: ${honeypot.res.status}`);
 }
 console.log('✓ POST /api/public/leads honeypot returns received:true');
+
+if (hasLiveSupabase()) {
+  console.log('\n== Live lead → Fast Rental demandes ==');
+  const marker = `smoke-${Date.now()}`;
+  const created = await fetchJson(`${apiBase}/api/public/leads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      typeDemande: 'prequal',
+      nom: marker,
+      telephone: '5145550199',
+      email: 'smoke@example.com',
+      revenuMensuel: 3200,
+      scoreCredit: 680,
+      dossierTal: false,
+      dateDemenagement: '2026-09-01',
+      message: 'Smoke test lead',
+      hp: '',
+      lang: 'fr',
+    }),
+  });
+  if (!created.res.ok || unwrapData(created.body)?.received !== true) {
+    throw new Error(`live lead create failed: ${created.res.status} ${JSON.stringify(created.body)}`);
+  }
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const { backendEnv } = await import('./lib/env.mjs');
+  const be = backendEnv();
+  const sb = createClient(be.SUPABASE_URL, be.SUPABASE_SERVICE_ROLE_KEY);
+  const { data: row, error: rowError } = await sb
+    .from('demandes_clients')
+    .select('id,statut,message,type_demande,revenu_mensuel,score_credit')
+    .eq('nom', marker)
+    .maybeSingle();
+  if (rowError || !row) throw new Error(`lead row missing after POST: ${rowError?.message ?? 'not found'}`);
+  if (row.statut !== 'nouveau') throw new Error(`expected statut=nouveau, got ${row.statut}`);
+  if (!String(row.message ?? '').includes('Revenu mensuel: 3200$')) {
+    throw new Error('prequal message missing fields for Fast Rental Demandes panel');
+  }
+  await sb.from('demandes_clients').delete().eq('id', row.id);
+  console.log('✓ Lead round-trip stored in shared demandes_clients (statut=nouveau)');
+}
 
 console.log('\n== Rate limit (leads) ==');
 let saw429 = false;

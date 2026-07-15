@@ -32,7 +32,16 @@ export function ListingCard({ listing, onNavigate, compact }: Props) {
     >
       <div className={compact ? 'prev-photo' : 'listing-photo'}>
         {listing.thumbnailUrl ? (
-          <img src={listing.thumbnailUrl} alt={listing.adresse} loading="lazy" />
+          listing.thumbnailType === 'video' ? (
+            <span className="listing-photo-video">
+              <span className="listing-photo-play" aria-hidden="true">
+                ▶
+              </span>
+              <video src={listing.thumbnailUrl} preload="metadata" muted playsInline />
+            </span>
+          ) : (
+            <img src={listing.thumbnailUrl} alt={listing.adresse} loading="lazy" />
+          )
         ) : (
           <div className="photo-ph">
             <span className="photo-ph-icon">🏠</span>

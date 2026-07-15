@@ -94,7 +94,7 @@ free_dev_port() {
 
 wait_for_backend() {
   local url="$1"
-  local attempts=30
+  local attempts=60
   local i
 
   for ((i = 1; i <= attempts; i++)); do
@@ -108,6 +108,21 @@ wait_for_backend() {
   done
 
   die "Backend did not respond on $url. A stale process may still own port 4001."
+}
+
+wait_for_port() {
+  local port="$1"
+  local attempts=60
+  local i
+
+  for ((i = 1; i <= attempts; i++)); do
+    if port_listener_pids "$port" | grep -q .; then
+      return 0
+    fi
+    sleep 0.5
+  done
+
+  die "Nothing is listening on port ${port}."
 }
 
 ensure_legacy_assets() {
@@ -160,7 +175,10 @@ fi
 free_dev_port 4001
 free_dev_port 5174
 
-log "Starting backend (http://localhost:4001) and frontend (http://localhost:5174)..."
+log "Building shared package..."
+npm run build -w @union-rental/shared
+
+log "Starting backend on http://localhost:4001 ..."
 log "Press Ctrl+C to stop both servers."
 echo
 
@@ -170,8 +188,14 @@ npm run dev:backend &
 BACKEND_PID=$!
 
 wait_for_backend "http://localhost:4001/health"
+log "✓ Backend ready — http://localhost:4001/health"
 
+log "Starting frontend on http://localhost:5174 ..."
 npm run dev:frontend &
 FRONTEND_PID=$!
+
+wait_for_port 5174
+log "✓ Frontend ready — http://localhost:5174/"
+echo
 
 wait -n "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || wait

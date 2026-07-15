@@ -22,6 +22,7 @@ export const createLeadSchema = z
       .refine((v) => v.replace(/\D/g, '').length >= 7, 'Téléphone invalide'),
     email: z.string().trim().email().max(120).nullish().or(z.literal('')),
     revenuMensuel: z.coerce.number().int().min(0).max(1000000).nullish(),
+    scoreCredit: z.coerce.number().int().min(300).max(900).nullish(),
     dossierTal: z.boolean().nullish(),
     dateDemenagement: z.string().trim().max(60).nullish(),
     message: z.string().trim().max(2000).nullish(),
@@ -36,6 +37,9 @@ export const createLeadSchema = z
       }
       if (d.revenuMensuel === null || d.revenuMensuel === undefined) {
         ctx.addIssue({ code: 'custom', path: ['revenuMensuel'], message: 'Revenu requis' });
+      }
+      if (d.scoreCredit === null || d.scoreCredit === undefined) {
+        ctx.addIssue({ code: 'custom', path: ['scoreCredit'], message: 'Cote de crédit requise' });
       }
     }
   });

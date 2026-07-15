@@ -14,6 +14,7 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
   const [tel, setTel] = useState('');
   const [email, setEmail] = useState('');
   const [revenu, setRevenu] = useState('');
+  const [cote, setCote] = useState('');
   const [tal, setTal] = useState('false');
   const [date, setDate] = useState('');
   const [msg, setMsg] = useState('');
@@ -22,7 +23,7 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
 
   const handleSubmit = async () => {
     const next: Record<string, string> = {};
-    if (!nom.trim() || !tel.trim() || !email.trim() || !revenu) {
+    if (!nom.trim() || !tel.trim() || !email.trim() || !revenu || !cote.trim()) {
       showToast(t('toast.missingFields'));
       next.form = t('toast.missingFields');
     }
@@ -34,6 +35,11 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
       showToast(t('toast.badEmail'));
       next.email = t('toast.badEmail');
     }
+    const scoreCredit = parseInt(cote, 10);
+    if (!cote.trim() || !/^\d+$/.test(cote) || scoreCredit < 300 || scoreCredit > 900) {
+      showToast(t('toast.badCreditScore'));
+      next.cote = t('toast.badCreditScore');
+    }
     setErrors(next);
     if (Object.keys(next).length) return;
 
@@ -43,6 +49,7 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
       telephone: tel.trim(),
       email: email.trim(),
       revenuMensuel: parseInt(revenu, 10) || null,
+      scoreCredit,
       dossierTal: tal === 'true',
       dateDemenagement: date.trim() || null,
       message: msg.trim() || null,
@@ -106,11 +113,25 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
         </div>
       </div>
       <div className="field">
+        <label htmlFor="p-cote">{t('field.coteCredit')}</label>
+        <input
+          id="p-cote"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          minLength={3}
+          maxLength={3}
+          placeholder={t('field.coteCreditPh')}
+          value={cote}
+          onChange={(e) => setCote(e.target.value.replace(/\D/g, '').slice(0, 3))}
+        />
+        {errors.cote && <div className="field-error">{errors.cote}</div>}
+      </div>
+      <div className="field">
         <label htmlFor="p-date">{t('field.dateDem')}</label>
         <input
           id="p-date"
-          maxLength={60}
-          placeholder={t('field.datePh')}
+          type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />

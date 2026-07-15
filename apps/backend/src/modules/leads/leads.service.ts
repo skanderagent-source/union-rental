@@ -40,6 +40,71 @@ async function validateListing(listingId: string | null | undefined): Promise<{
   return { id: null, adresse: null };
 }
 
+/** Fast Rental DemandesPanel renders `message` — mirror assign-email fields there. */
+export function buildDemandMessage(input: {
+  typeDemande: 'rappel' | 'prequal';
+  listingAdresse: string | null;
+  dossierTal?: boolean | null;
+  revenuMensuel?: number | null;
+  scoreCredit?: number | null;
+  dateDemenagement?: string | null;
+  userMessage: string;
+}): string | null {
+  const lines: string[] = [];
+  lines.push(
+    `Type: ${input.typeDemande === 'prequal' ? 'Préqualification' : 'Rappel rapide'}`,
+  );
+  if (input.listingAdresse) lines.push(`Logement: ${input.listingAdresse}`);
+  if (input.typeDemande === 'prequal') {
+    if (input.revenuMensuel != null) lines.push(`Revenu mensuel: ${input.revenuMensuel}$`);
+    if (input.scoreCredit != null) lines.push(`Cote de crédit: ${input.scoreCredit}`);
+    if (input.dossierTal !== undefined && input.dossierTal !== null) {
+      lines.push(`Dossier TAL: ${input.dossierTal ? 'Oui' : 'Non'}`);
+    }
+    if (input.dateDemenagement) lines.push(`Date déménagement: ${input.dateDemenagement}`);
+  }
+  if (input.userMessage) lines.push(input.userMessage);
+  return lines.length > 0 ? lines.join('\n') : null;
+}
+
+function isColumnCompatError(message: string | undefined) {
+  return /logement_id|listing_id|column/i.test(message ?? '');
+}
+
+async function insertDemandRow(row: Record<string, unknown>) {
+  const listingId = row.listing_id ?? null;
+  const logementId = row.logement_id ?? null;
+  const { logement_id: _legacy, listing_id: _canonical, ...base } = row;
+
+  const attempts: Record<string, unknown>[] = [row];
+  if (listingId && logementId) {
+    attempts.push({ ...base, listing_id: listingId });
+    attempts.push({ ...base, logement_id: logementId });
+  } else if (listingId) {
+    attempts.push({ ...base, listing_id: listingId });
+  } else if (logementId) {
+    attempts.push({ ...base, logement_id: logementId });
+  }
+  attempts.push(base);
+
+  const seen = new Set<string>();
+  let lastError: { message?: string } | null = null;
+
+  for (const payload of attempts) {
+    const key = JSON.stringify(payload);
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const { error } = await supabaseAdmin.from('demandes_clients').insert(payload);
+    if (!error) return;
+    lastError = error;
+    if (!isColumnCompatError(error.message)) break;
+    logger.warn({ err: error, payloadKeys: Object.keys(payload) }, 'demandes_clients insert retry');
+  }
+
+  throw lastError ?? new Error('demandes_clients insert failed');
+}
+
 export async function createPublicLead(input: CreateLeadBody) {
   if (input.hp) {
     logger.info('Honeypot triggered — skipping lead insert');
@@ -62,13 +127,15 @@ export async function createPublicLead(input: CreateLeadBody) {
   const nom = stripHtml(input.nom);
   const telephone = stripHtml(input.telephone);
   const userMessage = input.message ? stripHtml(input.message) : '';
-  const messageLines: string[] = [];
-  if (listing.adresse) messageLines.push(`Logement: ${listing.adresse}`);
-  if (input.typeDemande === 'prequal' && input.dossierTal !== undefined && input.dossierTal !== null) {
-    messageLines.push(`Dossier TAL: ${input.dossierTal ? 'Oui' : 'Non'}`);
-  }
-  if (userMessage) messageLines.push(userMessage);
-  const composedMessage = messageLines.length > 0 ? messageLines.join('\n') : null;
+  const composedMessage = buildDemandMessage({
+    typeDemande: input.typeDemande,
+    listingAdresse: listing.adresse,
+    dossierTal: input.dossierTal,
+    revenuMensuel: input.typeDemande === 'prequal' ? input.revenuMensuel : null,
+    scoreCredit: input.typeDemande === 'prequal' ? input.scoreCredit : null,
+    dateDemenagement: input.dateDemenagement ?? null,
+    userMessage,
+  });
 
   const email = input.email?.trim() || null;
 
@@ -81,6 +148,7 @@ export async function createPublicLead(input: CreateLeadBody) {
     email,
     statut: 'nouveau',
     revenu_mensuel: input.typeDemande === 'prequal' ? input.revenuMensuel : null,
+    score_credit: input.typeDemande === 'prequal' ? input.scoreCredit : null,
     date_demenagement: input.dateDemenagement ?? null,
     message: composedMessage,
   };
@@ -89,13 +157,8 @@ export async function createPublicLead(input: CreateLeadBody) {
     insertRow.logement_id = listing.id;
   }
 
-  let { error } = await supabaseAdmin.from('demandes_clients').insert(insertRow);
-  if (error && listing.id && /logement_id/i.test(error.message ?? '')) {
-    const { logement_id: _legacy, ...withoutLegacy } = insertRow;
-    ({ error } = await supabaseAdmin.from('demandes_clients').insert(withoutLegacy));
-  }
-
-  if (error) throw error;
+  await insertDemandRow(insertRow);
+  logger.info({ typeDemande: input.typeDemande, listingId: listing.id }, 'Lead stored in demandes_clients');
 
   const leadPayload = {
     typeDemande: input.typeDemande,
@@ -103,9 +166,10 @@ export async function createPublicLead(input: CreateLeadBody) {
     telephone,
     email,
     revenuMensuel: input.typeDemande === 'prequal' ? (input.revenuMensuel ?? null) : null,
+    scoreCredit: input.typeDemande === 'prequal' ? (input.scoreCredit ?? null) : null,
     dossierTal: input.typeDemande === 'prequal' ? (input.dossierTal ?? false) : null,
     dateDemenagement: input.dateDemenagement ?? null,
-    message: composedMessage,
+    message: userMessage || null,
   };
 
   const { data: admins } = await supabaseAdmin

@@ -23,6 +23,9 @@ Never run `supabase db push` from this repo. Never apply Fast Rental `0006_lockd
 
 - Customers have no direct Supabase access and can only use the public listing API and callback form.
 - Union's backend inserts callback leads into `demandes_clients`; it does not update listings, media, or geocoding data.
+- Fast Rental admin reads active demandes at `/app/demandes` (`statut = 'nouveau'`).
+- The `message` column includes type, income, credit score, TAL, and move-in date so the Fast Rental Demandes panel shows the full form (that UI only renders `message` beyond contact fields).
+- Column values (`revenu_mensuel`, `score_credit`, `date_demenagement`, `listing_id`) are also stored for assignment emails and reporting.
 - Fast Rental owns listing imports, availability, media ordering, approvals, and geocoding.
 
 ## Verification queries
@@ -56,8 +59,8 @@ Automated live check: `npm run verify-db`
 
 Union Rental inserts into `demandes_clients` with columns aligned to Fast Rental:
 
-- `type_demande`, `listing_id`, `ref_agent_id`, `nom`, `telephone`, `email`
-- `revenu_mensuel`, `date_demenagement`, `message`
+- `type_demande`, `listing_id`, `logement_id` (legacy), `ref_agent_id`, `nom`, `telephone`, `email`
+- `revenu_mensuel`, `score_credit`, `date_demenagement`, `message`
 
 Prequal **dossier TAL** is stored in `message` (`Dossier TAL: Oui/Non`) because the shared schema has no `dossier_tal` column.
 

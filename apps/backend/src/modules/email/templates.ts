@@ -16,6 +16,7 @@ type LeadFields = {
   telephone: string;
   email?: string | null;
   revenuMensuel?: number | null;
+  scoreCredit?: number | null;
   dossierTal?: boolean | null;
   dateDemenagement?: string | null;
   message?: string | null;
@@ -31,6 +32,8 @@ function leadBodyLines(lead: LeadFields, listingAdresse?: string | null): string
   if (lead.email) lines.push(`<p><strong>Email :</strong> ${esc(lead.email)}</p>`);
   if (lead.revenuMensuel != null)
     lines.push(`<p><strong>Revenu mensuel :</strong> ${esc(lead.revenuMensuel)} $</p>`);
+  if (lead.scoreCredit != null)
+    lines.push(`<p><strong>Cote de crédit :</strong> ${esc(lead.scoreCredit)}</p>`);
   if (lead.typeDemande === 'prequal') {
     lines.push(
       `<p><strong>Dossier TAL :</strong> ${lead.dossierTal ? 'Oui' : 'Non'}</p>`,

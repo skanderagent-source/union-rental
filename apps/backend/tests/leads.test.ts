@@ -31,6 +31,7 @@ vi.mock('resend', () => ({
 
 import { app } from '../src/app.js';
 import { supabaseAdmin } from '../src/db/supabaseAdmin.js';
+import { buildDemandMessage } from '../src/modules/leads/leads.service.js';
 
 const validAgentId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const validListingId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
@@ -95,6 +96,26 @@ function setupLeadMocks(options?: {
   return { insert };
 }
 
+describe('buildDemandMessage', () => {
+  it('includes prequal fields for Fast Rental Demandes panel', () => {
+    const message = buildDemandMessage({
+      typeDemande: 'prequal',
+      listingAdresse: '100 Rue Test',
+      revenuMensuel: 3500,
+      scoreCredit: 720,
+      dossierTal: true,
+      dateDemenagement: '2026-08-01',
+      userMessage: 'Famille de 3',
+    });
+    expect(message).toContain('Type: Préqualification');
+    expect(message).toContain('Revenu mensuel: 3500$');
+    expect(message).toContain('Cote de crédit: 720');
+    expect(message).toContain('Dossier TAL: Oui');
+    expect(message).toContain('Date déménagement: 2026-08-01');
+    expect(message).toContain('Famille de 3');
+  });
+});
+
 describe('POST /api/public/leads', () => {
   beforeEach(() => {
     emailMocks.sendEmail.mockClear();
@@ -125,7 +146,7 @@ describe('POST /api/public/leads', () => {
         logement_id: validListingId,
         ref_agent_id: validAgentId,
         statut: 'nouveau',
-        message: expect.stringContaining('Logement:'),
+        message: expect.stringMatching(/Type: Rappel rapide[\s\S]*Logement:/),
       }),
     );
   });
@@ -193,7 +214,7 @@ describe('POST /api/public/leads', () => {
       expect.objectContaining({
         listing_id: null,
         statut: 'nouveau',
-        message: 'Bonjour',
+        message: expect.stringMatching(/Type: Rappel rapide[\s\S]*Bonjour/),
       }),
     );
   });
@@ -213,7 +234,7 @@ describe('POST /api/public/leads', () => {
       expect.objectContaining({
         nom: 'Jean',
         telephone: '5145551234',
-        message: 'Bonjour',
+        message: expect.stringMatching(/Type: Rappel rapide[\s\S]*Bonjour/),
       }),
     );
   });
@@ -226,6 +247,7 @@ describe('POST /api/public/leads', () => {
       telephone: '5145551234',
       email: 'marie@example.com',
       revenuMensuel: 3500,
+      scoreCredit: 720,
       dossierTal: true,
       hp: '',
       lang: 'fr',
@@ -234,7 +256,10 @@ describe('POST /api/public/leads', () => {
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         revenu_mensuel: 3500,
-        message: expect.stringContaining('Dossier TAL: Oui'),
+        score_credit: 720,
+        message: expect.stringMatching(
+          /Type: Préqualification[\s\S]*Revenu mensuel: 3500\$[\s\S]*Cote de crédit: 720[\s\S]*Dossier TAL: Oui/,
+        ),
       }),
     );
     expect(insert).toHaveBeenCalledWith(

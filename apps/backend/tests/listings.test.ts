@@ -85,19 +85,21 @@ describe('GET /api/public/listings', () => {
     );
   });
 
-  it('queries public_available_listings with photos-first ordering before pagination', async () => {
+  it('queries public_available_listings with media-first ordering before pagination', async () => {
     const res = await request(app).get('/api/public/listings?page=1&pageSize=24');
     expect(res.status).toBe(200);
     expect(supabaseAdmin.from).toHaveBeenCalledWith('public_available_listings');
     const chain = vi.mocked(supabaseAdmin.from).mock.results[0]?.value;
-    expect(chain.order).toHaveBeenNthCalledWith(1, 'approved_image_count', { ascending: false });
-    expect(chain.order).toHaveBeenNthCalledWith(2, 'adresse', { ascending: true });
+    expect(chain.order).toHaveBeenNthCalledWith(1, 'approved_media_count', { ascending: false });
+    expect(chain.order).toHaveBeenNthCalledWith(2, 'approved_image_count', { ascending: false });
+    expect(chain.order).toHaveBeenNthCalledWith(3, 'adresse', { ascending: true });
     expect(chain.range).toHaveBeenCalledWith(0, 23);
   });
 
-  it('only signs thumbnails for completed approved uploads', async () => {
+  it('signs thumbnails for the first approved media item, including videos', async () => {
     await request(app).get('/api/public/listings');
     expect(mediaChain.not).toHaveBeenCalledWith('upload_completed_at', 'is', null);
+    expect(mediaChain.eq).not.toHaveBeenCalledWith('type', 'image');
     expect(mediaChain.order).toHaveBeenNthCalledWith(1, 'sort_order', { ascending: true });
     expect(mediaChain.order).toHaveBeenNthCalledWith(2, 'created_at', { ascending: true });
   });
@@ -120,6 +122,42 @@ describe('GET /api/public/listings', () => {
     expect(res.body.data.items[0].thumbnailUrl).toBe('https://signed.example/view');
     expect(res.body.data.items[1].thumbnailUrl).toBeNull();
     expect(res.body.data.items[0]).toHaveProperty('approvedImageCount');
+    expect(res.body.data.items[0]).toHaveProperty('approvedMediaCount');
+    expect(res.body.data.items[0]).toHaveProperty('thumbnailType');
+  });
+
+  it('returns video thumbnail metadata for video-only listings', async () => {
+    const videoRow = {
+      ...sampleRows[0]!,
+      id: '33333333-3333-3333-3333-333333333333',
+      approved_image_count: 0,
+      approved_media_count: 1,
+    };
+    listChain = createThenableChain({ data: [videoRow], error: null, count: 1 });
+    mediaChain = createThenableChain({
+      data: [
+        {
+          id: 'media-video',
+          listing_id: videoRow.id,
+          object_key: 'videos/a.mp4',
+          original_filename: 'a.mp4',
+          type: 'video',
+        },
+      ],
+      error: null,
+    });
+    vi.mocked(supabaseAdmin.from).mockImplementation(
+      mockSupabaseFrom({
+        public_available_listings: () => listChain,
+        listing_media: () => mediaChain,
+      }),
+    );
+
+    const res = await request(app).get('/api/public/listings');
+    expect(res.status).toBe(200);
+    expect(res.body.data.items[0].thumbnailUrl).toBe('https://signed.example/view');
+    expect(res.body.data.items[0].thumbnailType).toBe('video');
+    expect(res.body.data.items[0].approvedMediaCount).toBe(1);
   });
 
   it('applies prixMax with null-priced rows retained', async () => {

@@ -47,47 +47,61 @@ async function attachThumbnails(rows: ViewRow[]): Promise<PublicListing[]> {
   const ids = rows.map((r) => r.id);
   const { data: mediaRows } = await supabaseAdmin
     .from('listing_media')
-    .select('id,listing_id,object_key,original_filename')
+    .select('id,listing_id,object_key,original_filename,type')
     .in('listing_id', ids)
     .eq('status', 'approved')
     .not('upload_completed_at', 'is', null)
-    .eq('type', 'image')
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
-  const firstByListing = new Map<string, { object_key: string; original_filename: string }>();
+  const firstByListing = new Map<
+    string,
+    { object_key: string; original_filename: string; type: 'image' | 'video' }
+  >();
   for (const m of mediaRows ?? []) {
     if (!firstByListing.has(m.listing_id)) {
-      firstByListing.set(m.listing_id, m);
+      firstByListing.set(m.listing_id, {
+        object_key: m.object_key,
+        original_filename: m.original_filename,
+        type: m.type as 'image' | 'video',
+      });
     }
   }
 
-  const thumbUrls = new Map<string, string>();
+  const thumbUrls = new Map<string, { url: string; type: 'image' | 'video' }>();
   await Promise.all(
     [...firstByListing.entries()].map(async ([listingId, media]) => {
       const url = await resolveViewUrl(media.object_key, media.original_filename);
-      thumbUrls.set(listingId, url);
+      thumbUrls.set(listingId, { url, type: media.type });
     }),
   );
 
-  return rows.map((r) => ({
-    id: r.id,
-    adresse: r.adresse,
-    quartier: r.quartier,
-    prix: r.prix,
-    taille: r.taille,
-    electromenagers: r.electromenagers,
-    notes: r.notes,
-    statut: r.statut,
-    source: r.source,
-    latitude: r.latitude,
-    longitude: r.longitude,
-    approvedImageCount: r.approved_image_count ?? 0,
-    thumbnailUrl: thumbUrls.get(r.id) ?? null,
-  }));
+  return rows.map((r) => {
+    const thumb = thumbUrls.get(r.id);
+    return {
+      id: r.id,
+      adresse: r.adresse,
+      quartier: r.quartier,
+      prix: r.prix,
+      taille: r.taille,
+      electromenagers: r.electromenagers,
+      notes: r.notes,
+      statut: r.statut,
+      source: r.source,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      approvedImageCount: r.approved_image_count ?? 0,
+      approvedMediaCount: r.approved_media_count ?? 0,
+      thumbnailUrl: thumb?.url ?? null,
+      thumbnailType: thumb?.type ?? null,
+    };
+  });
 }
 
-function toPublicListing(r: ViewRow, thumbnailUrl: string | null): PublicListing {
+function toPublicListing(
+  r: ViewRow,
+  thumbnail: { url: string; type: 'image' | 'video' } | null,
+): PublicListing {
   return {
     id: r.id,
     adresse: r.adresse,
@@ -101,7 +115,9 @@ function toPublicListing(r: ViewRow, thumbnailUrl: string | null): PublicListing
     latitude: r.latitude,
     longitude: r.longitude,
     approvedImageCount: r.approved_image_count ?? 0,
-    thumbnailUrl,
+    approvedMediaCount: r.approved_media_count ?? 0,
+    thumbnailUrl: thumbnail?.url ?? null,
+    thumbnailType: thumbnail?.type ?? null,
   };
 }
 
@@ -110,6 +126,7 @@ export async function listPublicListings(params: PublicListingsQuery) {
   let query = supabaseAdmin
     .from('public_available_listings')
     .select('*', { count: 'exact' })
+    .order('approved_media_count', { ascending: false })
     .order('approved_image_count', { ascending: false })
     .order('adresse', { ascending: true })
     .range(from, from + params.pageSize - 1);
@@ -154,10 +171,12 @@ export async function getPublicListingById(id: string): Promise<PublicListingDet
     })),
   );
 
-  const thumbnailUrl = media.find((m) => m.type === 'image')?.viewUrl ?? null;
+  const thumbnail = media[0]
+    ? { url: media[0].viewUrl, type: media[0].type }
+    : null;
 
   return {
-    ...toPublicListing(row, thumbnailUrl),
+    ...toPublicListing(row, thumbnail),
     media,
   };
 }

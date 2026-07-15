@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { SIZE_LABELS, type PublicListingDetail } from '@union-rental/shared';
+import { SIZE_LABELS, type PublicListingDetail, type PublicMediaItem } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useContactModal } from '@/app/providers/ContactModalProvider';
 import { useToast } from '@/app/providers/ToastProvider';
@@ -10,13 +10,41 @@ import { fmtPriceMonth } from '@/lib/format';
 import { Footer } from '@/components/layout/Footer';
 import { ErrorState } from '@/components/common/ErrorState';
 
+function MediaViewer({
+  item,
+  alt,
+  className,
+  videoClassName,
+  controls,
+}: {
+  item: PublicMediaItem;
+  alt: string;
+  className?: string;
+  videoClassName?: string;
+  controls?: boolean;
+}) {
+  if (item.type === 'video') {
+    return (
+      <video
+        key={item.id}
+        className={videoClassName}
+        src={item.viewUrl}
+        controls={controls}
+        preload="metadata"
+        playsInline
+      />
+    );
+  }
+  return <img src={item.viewUrl} alt={alt} className={className} />;
+}
+
 export function ListingDetailPage() {
   const { id } = useParams();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { openContact } = useContactModal();
   const { showToast } = useToast();
-  const [activeImage, setActiveImage] = useState(0);
+  const [activeMedia, setActiveMedia] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
@@ -69,9 +97,9 @@ export function ListingDetailPage() {
   }
 
   const listing = query.data;
-  const images = listing.media.filter((m) => m.type === 'image');
-  const videos = listing.media.filter((m) => m.type === 'video');
-  const mainImage = images[activeImage]?.viewUrl ?? images[0]?.viewUrl;
+  const media = listing.media;
+  const current = media[activeMedia];
+  const hasMultiple = media.length > 1;
 
   const shareListing = async () => {
     try {
@@ -82,9 +110,13 @@ export function ListingDetailPage() {
     }
   };
 
-  const goToImage = (direction: -1 | 1) => {
-    if (images.length <= 1) return;
-    setActiveImage((idx) => (idx + direction + images.length) % images.length);
+  const goToMedia = (direction: -1 | 1) => {
+    if (!hasMultiple) return;
+    setActiveMedia((idx) => (idx + direction + media.length) % media.length);
+  };
+
+  const openLightbox = () => {
+    if (current?.type === 'image') setLightboxOpen(true);
   };
 
   return (
@@ -116,36 +148,47 @@ export function ListingDetailPage() {
         </div>
 
         <div className="detail-gallery">
-          {mainImage ? (
+          {current ? (
             <div className="detail-main-photo-wrap">
-              {images.length > 1 && (
+              {hasMultiple && (
                 <>
                   <button
                     type="button"
                     className="gallery-nav detail-gallery-nav detail-gallery-nav-prev"
-                    aria-label={t('detail.prevPhoto')}
-                    onClick={() => goToImage(-1)}
+                    aria-label={t('detail.prevMedia')}
+                    onClick={() => goToMedia(-1)}
                   >
                     &lt;
                   </button>
                   <button
                     type="button"
                     className="gallery-nav detail-gallery-nav detail-gallery-nav-next"
-                    aria-label={t('detail.nextPhoto')}
-                    onClick={() => goToImage(1)}
+                    aria-label={t('detail.nextMedia')}
+                    onClick={() => goToMedia(1)}
                   >
                     &gt;
                   </button>
                 </>
               )}
-              <button
-                type="button"
-                className="detail-main-photo-trigger"
-                onClick={() => setLightboxOpen(true)}
-                aria-label={t('detail.expandPhoto')}
-              >
-                <img src={mainImage} alt={listing.adresse} className="detail-main-photo" />
-              </button>
+              {current.type === 'image' ? (
+                <button
+                  type="button"
+                  className="detail-main-photo-trigger"
+                  onClick={openLightbox}
+                  aria-label={t('detail.expandPhoto')}
+                >
+                  <MediaViewer item={current} alt={listing.adresse} className="detail-main-photo" />
+                </button>
+              ) : (
+                <div className="detail-main-media-slot">
+                  <MediaViewer
+                    item={current}
+                    alt={listing.adresse}
+                    videoClassName="detail-main-video"
+                    controls
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="photo-ph" style={{ minHeight: 240, borderRadius: 14 }}>
@@ -154,35 +197,32 @@ export function ListingDetailPage() {
               <span className="photo-ph-sub">{t('photo.sub')}</span>
             </div>
           )}
-          {images.length > 1 && (
+          {hasMultiple && (
             <div className="detail-thumbs">
-              {images.map((img, idx) => (
-                <img
-                  key={img.id}
-                  src={img.viewUrl}
-                  alt=""
-                  className={idx === activeImage ? 'active' : ''}
+              {media.map((item, idx) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`detail-thumb${idx === activeMedia ? ' active' : ''}`}
+                  aria-label={item.originalFilename}
                   onClick={() => {
-                    setActiveImage(idx);
-                    setLightboxOpen(true);
+                    setActiveMedia(idx);
+                    if (item.type === 'image') setLightboxOpen(true);
                   }}
-                />
+                >
+                  {item.type === 'image' ? (
+                    <img src={item.viewUrl} alt="" />
+                  ) : (
+                    <span className="detail-thumb-video">
+                      <span className="detail-thumb-play" aria-hidden="true">
+                        ▶
+                      </span>
+                      <video src={item.viewUrl} preload="metadata" muted playsInline />
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
-          )}
-          {videos.length > 0 && (
-            <>
-              <h3>{t('detail.videos')}</h3>
-              {videos.map((vid) => (
-                <video
-                  key={vid.id}
-                  controls
-                  preload="metadata"
-                  src={vid.viewUrl}
-                  style={{ width: '100%', borderRadius: 14 }}
-                />
-              ))}
-            </>
           )}
         </div>
 
@@ -220,7 +260,7 @@ export function ListingDetailPage() {
         </div>
       </div>
 
-      {lightboxOpen && mainImage && (
+      {lightboxOpen && current && (
         <div
           className="lightbox-overlay"
           onClick={() => setLightboxOpen(false)}
@@ -244,27 +284,36 @@ export function ListingDetailPage() {
             </svg>
           </button>
           <div className="lightbox-stage" onClick={(e) => e.stopPropagation()}>
-            {images.length > 1 && (
+            {hasMultiple && (
               <>
                 <button
                   type="button"
                   className="gallery-nav lightbox-nav lightbox-nav-prev"
-                  aria-label={t('detail.prevPhoto')}
-                  onClick={() => goToImage(-1)}
+                  aria-label={t('detail.prevMedia')}
+                  onClick={() => goToMedia(-1)}
                 >
                   &lt;
                 </button>
                 <button
                   type="button"
                   className="gallery-nav lightbox-nav lightbox-nav-next"
-                  aria-label={t('detail.nextPhoto')}
-                  onClick={() => goToImage(1)}
+                  aria-label={t('detail.nextMedia')}
+                  onClick={() => goToMedia(1)}
                 >
                   &gt;
                 </button>
               </>
             )}
-            <img src={mainImage} alt={listing.adresse} className="lightbox-image" />
+            {current.type === 'image' ? (
+              <img src={current.viewUrl} alt={listing.adresse} className="lightbox-image" />
+            ) : (
+              <MediaViewer
+                item={current}
+                alt={listing.adresse}
+                videoClassName="lightbox-video"
+                controls
+              />
+            )}
           </div>
         </div>
       )}

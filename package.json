@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "start": "bash scripts/start-dev.sh",
-    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev": "bash scripts/start-dev.sh",
     "dev:frontend": "npm run dev --workspace @union-rental/frontend",
     "dev:backend": "npm run dev --workspace @union-rental/backend",
     "build": "npm run build --workspace @union-rental/shared && npm run build --workspace @union-rental/backend && npm run build --workspace @union-rental/frontend",

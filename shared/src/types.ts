@@ -24,7 +24,9 @@ export type PublicListing = {
   latitude: number | null;
   longitude: number | null;
   approvedImageCount: number;
+  approvedMediaCount: number;
   thumbnailUrl: string | null;
+  thumbnailType: 'image' | 'video' | null;
 };
 
 export type PublicMediaItem = {
@@ -65,6 +67,7 @@ export type CreateLeadInput = {
   telephone: string;
   email?: string | null;
   revenuMensuel?: number | null;
+  scoreCredit?: number | null;
   dossierTal?: boolean | null;
   dateDemenagement?: string | null;
   message?: string | null;
