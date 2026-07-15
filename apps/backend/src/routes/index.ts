@@ -12,6 +12,7 @@ import {
   servePublicMediaObject,
 } from '../modules/listings/listings.service.js';
 import { createPublicLead } from '../modules/leads/leads.service.js';
+import { resolveReferralSlug } from '../modules/referral/referral.service.js';
 import type { PublicListingsQuery } from '@union-rental/shared';
 
 function routeParam(value: string | string[] | undefined): string {
@@ -20,6 +21,14 @@ function routeParam(value: string | string[] | undefined): string {
 }
 
 export const listingsRouter = Router();
+
+listingsRouter.get(
+  '/referral/:slug',
+  asyncHandler(async (req, res) => {
+    const data = await resolveReferralSlug(routeParam(req.params.slug));
+    res.json({ data });
+  }),
+);
 
 listingsRouter.get(
   '/listings',

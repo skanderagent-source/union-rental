@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ReferralCaptureGate } from './ReferralCaptureGate';
+import { ReferralSlugPage } from './ReferralSlugPage';
 import { I18nProvider } from './providers/I18nProvider';
 import { QueryProvider } from './providers/QueryProvider';
 import { ContactModalProvider } from './providers/ContactModalProvider';
@@ -22,7 +23,10 @@ export function App() {
               <ReferralCaptureGate>
                 <NavBar />
                 <Routes>
+                  <Route path="/r/:slug" element={<ReferralSlugPage />} />
+                  <Route path="/r/:slug/logement/:listingId" element={<ReferralSlugPage />} />
                   <Route path="/" element={<HomePage />} />
+                  <Route path="/inventaire/:referralUsername" element={<InventoryPage />} />
                   <Route path="/inventaire" element={<InventoryPage />} />
                   <Route path="/a-propos" element={<AboutPage />} />
                   <Route path="/logement/:id" element={<ListingDetailPage />} />

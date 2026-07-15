@@ -4,7 +4,7 @@ import request from 'supertest';
 import { createThenableChain, mockSupabaseFrom } from './helpers/supabaseMock.js';
 
 vi.mock('../src/db/supabaseAdmin.js', () => ({
-  supabaseAdmin: { from: vi.fn() },
+  supabaseAdmin: { from: vi.fn(), rpc: vi.fn().mockResolvedValue({ data: null, error: null }) },
 }));
 
 const emailMocks = vi.hoisted(() => ({
@@ -35,13 +35,23 @@ import { buildDemandMessage } from '../src/modules/leads/leads.service.js';
 
 const validAgentId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const validListingId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const validLeadId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+function mockLeadInsert() {
+  return vi.fn(() => {
+    const chain = createThenableChain({ data: { id: validLeadId }, error: null });
+    chain.select = vi.fn(() => chain);
+    chain.single = vi.fn(async () => ({ data: { id: validLeadId }, error: null }));
+    return chain;
+  });
+}
 
 function setupLeadMocks(options?: {
   agentActive?: boolean;
   listingExists?: boolean;
   listingAdresse?: string;
 }) {
-  const insert = vi.fn().mockResolvedValue({ error: null });
+  const insert = mockLeadInsert();
   const demandesChain = createThenableChain({ data: null, error: null });
   demandesChain.insert = insert;
 
@@ -121,6 +131,8 @@ describe('POST /api/public/leads', () => {
     emailMocks.sendEmail.mockClear();
     emailMocks.sendEmailToMany.mockClear();
     vi.mocked(supabaseAdmin.from).mockReset();
+    vi.mocked(supabaseAdmin.rpc).mockClear();
+    vi.mocked(supabaseAdmin.rpc).mockResolvedValue({ data: null, error: null });
   });
 
   it('returns 201 for valid rappel with listing_id column', async () => {
@@ -149,6 +161,11 @@ describe('POST /api/public/leads', () => {
         message: expect.stringMatching(/Type: Rappel rapide[\s\S]*Logement:/),
       }),
     );
+    expect(supabaseAdmin.rpc).toHaveBeenCalledWith('assign_demande_client', {
+      p_lead_id: validLeadId,
+      p_agent_id: validAgentId,
+      p_assignation_type: 'auto_referral',
+    });
   });
 
   it('returns 201 for honeypot without insert or email side effects', async () => {
@@ -282,7 +299,7 @@ describe('POST /api/public/leads', () => {
   });
 
   it('notifies each active admin via sendEmailToMany', async () => {
-    const insert = vi.fn().mockResolvedValue({ error: null });
+    const insert = mockLeadInsert();
     const demandesChain = createThenableChain({ data: null, error: null });
     demandesChain.insert = insert;
 

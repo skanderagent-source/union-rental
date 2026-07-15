@@ -71,7 +71,7 @@ function isColumnCompatError(message: string | undefined) {
   return /logement_id|listing_id|column/i.test(message ?? '');
 }
 
-async function insertDemandRow(row: Record<string, unknown>) {
+async function insertDemandRow(row: Record<string, unknown>): Promise<string> {
   const listingId = row.listing_id ?? null;
   const logementId = row.logement_id ?? null;
   const { logement_id: _legacy, listing_id: _canonical, ...base } = row;
@@ -95,14 +95,29 @@ async function insertDemandRow(row: Record<string, unknown>) {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const { error } = await supabaseAdmin.from('demandes_clients').insert(payload);
-    if (!error) return;
+    const { data, error } = await supabaseAdmin
+      .from('demandes_clients')
+      .insert(payload)
+      .select('id')
+      .single();
+    if (!error && data?.id) return data.id as string;
     lastError = error;
-    if (!isColumnCompatError(error.message)) break;
+    if (!isColumnCompatError(error?.message)) break;
     logger.warn({ err: error, payloadKeys: Object.keys(payload) }, 'demandes_clients insert retry');
   }
 
   throw lastError ?? new Error('demandes_clients insert failed');
+}
+
+async function autoAssignReferralLead(leadId: string, agentId: string) {
+  const { error } = await supabaseAdmin.rpc('assign_demande_client', {
+    p_lead_id: leadId,
+    p_agent_id: agentId,
+    p_assignation_type: 'auto_referral',
+  });
+  if (error) {
+    logger.warn({ err: error, leadId, agentId }, 'auto_referral assign failed');
+  }
 }
 
 export async function createPublicLead(input: CreateLeadBody) {
@@ -157,8 +172,11 @@ export async function createPublicLead(input: CreateLeadBody) {
     insertRow.logement_id = listing.id;
   }
 
-  await insertDemandRow(insertRow);
-  logger.info({ typeDemande: input.typeDemande, listingId: listing.id }, 'Lead stored in demandes_clients');
+  const leadId = await insertDemandRow(insertRow);
+  if (validRefAgentId) {
+    await autoAssignReferralLead(leadId, validRefAgentId);
+  }
+  logger.info({ typeDemande: input.typeDemande, listingId: listing.id, leadId }, 'Lead stored in demandes_clients');
 
   const leadPayload = {
     typeDemande: input.typeDemande,

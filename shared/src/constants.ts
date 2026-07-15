@@ -71,6 +71,23 @@ export const REF_STORAGE_KEY = 'ur_ref';
 export const LANG_STORAGE_KEY = 'ur_lang';
 export const REF_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
+export const REFERRAL_USERNAME_MIN_LENGTH = 3;
+export const REFERRAL_USERNAME_MAX_LENGTH = 32;
+export const REFERRAL_USERNAME_PATTERN = /^[a-z0-9]+$/;
+
+export function normalizeReferralUsername(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function isValidReferralUsername(value: string): boolean {
+  const normalized = normalizeReferralUsername(value);
+  return (
+    normalized.length >= REFERRAL_USERNAME_MIN_LENGTH &&
+    normalized.length <= REFERRAL_USERNAME_MAX_LENGTH &&
+    REFERRAL_USERNAME_PATTERN.test(normalized)
+  );
+}
+
 export const DEFAULT_PAGE_SIZE = 24;
 export const MAX_PAGE_SIZE = 100;
 export const MAP_RESULT_CAP = 2000;

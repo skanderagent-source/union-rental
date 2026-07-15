@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { api } from '@/lib/apiClient';
 import { fmtResultsCount } from '@/lib/format';
+import { persistReferralAgentId } from '@/lib/referral';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { ErrorState } from '@/components/common/ErrorState';
 import { InventoryMap } from '@/components/map/InventoryMap';
@@ -14,7 +15,31 @@ import type { PublicListing, MapListing, QuartierCount } from '@union-rental/sha
 export function InventoryPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const { referralUsername } = useParams<{ referralUsername?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (!referralUsername) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { agentId } = await api.get<{ agentId: string }>(
+          `/api/public/referral/${encodeURIComponent(referralUsername)}`,
+        );
+        if (cancelled) return;
+        persistReferralAgentId(agentId);
+        const listingId = searchParams.get('listing');
+        if (listingId) {
+          navigate(`/logement/${listingId}`, { replace: true });
+        }
+      } catch {
+        /* unknown username — show inventory without referral */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [referralUsername, searchParams, navigate]);
 
   const q = searchParams.get('q') ?? '';
   const quartier = searchParams.get('quartier') ?? '';
