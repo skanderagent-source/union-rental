@@ -29,6 +29,7 @@ type ListingRow = {
   statut: string;
   latitude: unknown;
   longitude: unknown;
+  geocoding_status?: string | null;
   approved_image_count?: number;
   approved_media_count?: number;
 };
@@ -78,6 +79,12 @@ export function toPublicListingDetailResponse(
 }
 
 export function toMapListingResponse(row: ListingRow): MapListing {
+  const status = row.geocoding_status;
+  const allowed = new Set(['pending', 'success', 'failed', 'manual', 'approximate']);
+  const geocodingStatus = status && allowed.has(status)
+    ? status as MapListing['geocodingStatus']
+    : undefined;
+
   return mapListingSchema.parse({
     id: row.id,
     adresse: sanitizePublicText(row.adresse) ?? '',
@@ -85,6 +92,7 @@ export function toMapListingResponse(row: ListingRow): MapListing {
     prix: toNullableNumber(row.prix),
     latitude: toNullableNumber(row.latitude),
     longitude: toNullableNumber(row.longitude),
+    ...(geocodingStatus ? { geocodingStatus } : {}),
   });
 }
 

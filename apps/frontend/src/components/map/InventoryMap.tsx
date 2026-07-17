@@ -1,10 +1,11 @@
 import 'leaflet/dist/leaflet.css';
-import { CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet';
+import { useMemo } from 'react';
+import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip } from 'react-leaflet';
 import type { MapListing } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useContactModal } from '@/app/providers/ContactModalProvider';
 import { fmtPriceMonth } from '@/lib/format';
-import { resolveMarkerCoords } from '@/lib/mapUtils';
+import { buildMapMarkers } from '@/lib/mapUtils';
 
 type Props = {
   listings: MapListing[];
@@ -13,6 +14,7 @@ type Props = {
 export function InventoryMap({ listings }: Props) {
   const { t, lang } = useI18n();
   const { openContact } = useContactModal();
+  const { markers } = useMemo(() => buildMapMarkers(listings), [listings]);
 
   return (
     <div id="map-view" className="active">
@@ -21,51 +23,79 @@ export function InventoryMap({ listings }: Props) {
           attribution="© OSM"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {listings.map((d) => {
-          const coords = resolveMarkerCoords(d.latitude, d.longitude, d.quartier, d.id);
-          if (!coords) return null;
+        {markers.map(({ listings: groupListings, lat, lng, approximate, key }) => {
+          const count = groupListings.length;
           return (
             <CircleMarker
-              key={d.id}
-              center={[coords.lat, coords.lng]}
-              radius={8}
+              key={key}
+              center={[lat, lng]}
+              radius={Math.min(16, 10 + Math.log2(Math.max(count, 1)))}
               pathOptions={{
                 fillColor: '#a8865c',
                 color: '#fff',
                 weight: 2,
-                fillOpacity: coords.approximate ? 0.35 : 0.9,
+                fillOpacity: approximate ? 0.55 : 0.9,
               }}
             >
-              <Popup maxWidth={220}>
-                <b style={{ fontSize: 13 }}>{d.adresse}</b>
-                <br />
-                <small style={{ color: '#666' }}>{d.quartier ?? ''}</small>
-                {coords.approximate && (
+              {count > 1 && (
+                <Tooltip
+                  permanent
+                  direction="center"
+                  offset={[0, 0]}
+                  className="map-marker-count"
+                >
+                  {count}
+                </Tooltip>
+              )}
+              <Popup maxWidth={260}>
+                {count > 1 && (
                   <>
-                    <br />
-                    <small>{t('map.approx')}</small>
+                    <b style={{ fontSize: 13 }}>
+                      {approximate ? t('map.clusterArea') : t('map.clusterExact')}
+                      {' '}
+                      ({count})
+                    </b>
+                    <hr />
                   </>
                 )}
-                <br />
-                <b style={{ color: '#a8865c' }}>{fmtPriceMonth(d.prix, lang, t)}</b>
-                <br />
-                <button
-                  type="button"
-                  style={{
-                    marginTop: 6,
-                    padding: '5px 12px',
-                    background: '#a8865c',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => openContact({ id: d.id, adresse: d.adresse, prix: d.prix })}
-                >
-                  {t('mapPopup.interested')}
-                </button>
+                {groupListings.map((d) => (
+                  <div key={d.id} style={{ marginBottom: count > 1 ? 10 : 0 }}>
+                    <b style={{ fontSize: 13 }}>{d.adresse}</b>
+                    <br />
+                    {d.quartier && (
+                      <>
+                        <small style={{ color: '#666' }}>{d.quartier}</small>
+                        <br />
+                      </>
+                    )}
+                    {approximate && (
+                      <>
+                        <small>{t('map.approx')}</small>
+                        <br />
+                      </>
+                    )}
+                    <b style={{ color: '#a8865c' }}>{fmtPriceMonth(d.prix, lang, t)}</b>
+                    <br />
+                    <button
+                      type="button"
+                      style={{
+                        marginTop: 6,
+                        padding: '5px 12px',
+                        background: '#a8865c',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => openContact({ id: d.id, adresse: d.adresse, prix: d.prix })}
+                    >
+                      {t('mapPopup.interested')}
+                    </button>
+                    {count > 1 && <hr />}
+                  </div>
+                ))}
               </Popup>
             </CircleMarker>
           );

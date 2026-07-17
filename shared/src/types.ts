@@ -46,6 +46,7 @@ export type MapListing = {
   prix: number | null;
   latitude: number | null;
   longitude: number | null;
+  geocodingStatus?: 'pending' | 'success' | 'failed' | 'manual' | 'approximate' | null;
 };
 
 export type PublicStats = {

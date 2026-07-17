@@ -152,7 +152,7 @@ export async function getPublicListingById(id: string): Promise<PublicListingDet
 export async function listMapListings(params: Omit<PublicListingsQuery, 'page' | 'pageSize'>) {
   let query = supabaseAdmin
     .from('public_available_listings')
-    .select('id,adresse,quartier,prix,latitude,longitude')
+    .select('id,adresse,quartier,prix,latitude,longitude,geocoding_status')
     .limit(MAP_RESULT_CAP);
 
   query = applyFilters(query, { ...params, page: 1, pageSize: MAP_RESULT_CAP });

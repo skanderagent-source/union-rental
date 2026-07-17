@@ -141,6 +141,7 @@ export const mapListingSchema = z.object({
   prix: z.number().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
+  geocodingStatus: z.enum(['pending', 'success', 'failed', 'manual', 'approximate']).nullable().optional(),
 });
 
 export const publicStatsSchema = z.object({

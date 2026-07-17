@@ -1,4 +1,16 @@
-import { QUARTIER_COORDS } from '@union-rental/shared';
+import {
+  areaCoordsKey,
+  resolveAreaCoords,
+  type MapListing,
+} from '@union-rental/shared';
+
+export type MapMarkerGroup = {
+  key: string;
+  listings: MapListing[];
+  lat: number;
+  lng: number;
+  approximate: boolean;
+};
 
 export function hashOffset(id: string): [number, number] {
   let h = 0;
@@ -8,19 +20,97 @@ export function hashOffset(id: string): [number, number] {
   return [Math.cos(angle) * radius, Math.sin(angle) * radius];
 }
 
+function markerGroup(
+  listing: MapListing,
+): { key: string; lat: number; lng: number; approximate: boolean } | null {
+  if (listing.latitude != null && listing.longitude != null) {
+    if (listing.geocodingStatus === 'approximate') {
+      const areaKey = areaCoordsKey(listing.quartier);
+      const areaCoords = resolveAreaCoords(listing.quartier);
+      if (areaKey && areaCoords) {
+        return {
+          key: `area:${areaKey}`,
+          lat: areaCoords[0],
+          lng: areaCoords[1],
+          approximate: true,
+        };
+      }
+    }
+
+    return {
+      key: `exact:${listing.latitude.toFixed(6)}:${listing.longitude.toFixed(6)}`,
+      lat: listing.latitude,
+      lng: listing.longitude,
+      approximate: false,
+    };
+  }
+
+  const coords = resolveAreaCoords(listing.quartier);
+  const key = areaCoordsKey(listing.quartier);
+  if (!coords || !key) return null;
+
+  return {
+    key: `area:${key}`,
+    lat: coords[0],
+    lng: coords[1],
+    approximate: true,
+  };
+}
+
+export function buildMapMarkers(listings: MapListing[]) {
+  const groups = new Map<string, MapMarkerGroup>();
+  let unlocatedCount = 0;
+
+  for (const listing of listings) {
+    const group = markerGroup(listing);
+    if (!group) {
+      unlocatedCount++;
+      continue;
+    }
+
+    const existing = groups.get(group.key);
+    if (existing) {
+      existing.listings.push(listing);
+      continue;
+    }
+
+    const [dx, dy] = group.approximate ? [0, 0] : hashOffset(group.key);
+    groups.set(group.key, {
+      key: group.key,
+      listings: [listing],
+      lat: group.lat + dx,
+      lng: group.lng + dy,
+      approximate: group.approximate,
+    });
+  }
+
+  return {
+    markers: [...groups.values()],
+    unlocatedCount,
+  };
+}
+
+/** @deprecated use buildMapMarkers */
 export function resolveMarkerCoords(
   latitude: number | null,
   longitude: number | null,
   quartier: string | null,
   id: string,
 ): { lat: number; lng: number; approximate: boolean } | null {
-  if (latitude != null && longitude != null) {
-    const [dx, dy] = hashOffset(id);
-    return { lat: latitude + dx, lng: longitude + dy, approximate: false };
-  }
-  const q = (quartier ?? '').toLowerCase().trim();
-  const fallback = QUARTIER_COORDS[q];
-  if (!fallback) return null;
-  const [dx, dy] = hashOffset(id);
-  return { lat: fallback[0] + dx, lng: fallback[1] + dy, approximate: true };
+  const listing: MapListing = {
+    id,
+    adresse: '',
+    quartier,
+    prix: null,
+    latitude,
+    longitude,
+  };
+  const group = markerGroup(listing);
+  if (!group) return null;
+  const [dx, dy] = group.approximate ? [0, 0] : hashOffset(group.key);
+  return {
+    lat: group.lat + dx,
+    lng: group.lng + dy,
+    approximate: group.approximate,
+  };
 }

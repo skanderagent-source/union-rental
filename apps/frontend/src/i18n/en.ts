@@ -192,6 +192,8 @@ export default {
   'meta.unavailable.description':
     'This listing is no longer available. Contact LogiGo for similar options in Montreal.',
   'map.approx': 'Approximate location',
+  'map.clusterArea': 'Listings in this area',
+  'map.clusterExact': 'Listings at this location',
   'pag.prev': 'Previous',
   'pag.next': 'Next',
   'pag.first': 'First page',

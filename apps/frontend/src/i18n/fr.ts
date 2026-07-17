@@ -192,6 +192,8 @@ export default {
   'meta.unavailable.description':
     'Ce logement n’est plus disponible. Contactez LogiGo pour découvrir des options similaires à Montréal.',
   'map.approx': 'Position approximative',
+  'map.clusterArea': 'Logements dans ce secteur',
+  'map.clusterExact': 'Logements à cette position',
   'pag.prev': 'Précédent',
   'pag.next': 'Suivant',
   'pag.first': 'Première page',
