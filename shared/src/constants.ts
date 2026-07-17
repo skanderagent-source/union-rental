@@ -128,7 +128,7 @@ export const MAX_PAGE_SIZE = 100;
 export const MAX_LISTINGS_OFFSET = 10_000;
 /** Cap absurd inventory pagination URLs to block crawl traps. */
 export const MAX_INVENTORY_PAGE = 500;
-export const MAP_RESULT_CAP = 2000;
+export const MAP_RESULT_CAP = 3000;
 /** Ignore single-character catalog searches to reduce expensive ilike scans. */
 export const MIN_SEARCH_QUERY_LENGTH = 2;
 

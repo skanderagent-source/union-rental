@@ -35,7 +35,7 @@ need('db/sql/0000_fast_rental_dependencies.sql', [
 need('db/sql/union_rental_views.sql', [
   'public_available_listings',
   'revoke select',
-  "lower(l.source), '') <> 'orcha'",
+  "l.statut = 'Available'",
 ]);
 
 const listingsService = fs.readFileSync(

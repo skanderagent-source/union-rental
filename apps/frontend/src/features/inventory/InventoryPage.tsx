@@ -302,14 +302,16 @@ export function InventoryPage() {
         </div>
 
         <div className="results-header">
-          <SafeHtml
-            className="results-count"
-            html={
-              listingsQuery.data
-                ? fmtResultsCount(listingsQuery.data.total, lang)
-                : t('results.loading')
-            }
-          />
+          {vue !== 'carte' && (
+            <SafeHtml
+              className="results-count"
+              html={
+                listingsQuery.data
+                  ? fmtResultsCount(listingsQuery.data.total, lang)
+                  : t('results.loading')
+              }
+            />
+          )}
           <div className="view-toggle">
             <button
               type="button"
