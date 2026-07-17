@@ -34,15 +34,17 @@ if (env.NODE_ENV !== 'test') {
     (server as Server & { requestTimeout: number }).requestTimeout = env.HTTP_REQUEST_TIMEOUT_MS;
   }
 
-  server.listen(env.PORT, () => {
+  server.listen(env.PORT, env.HOST, () => {
     logger.info(
       {
+        host: env.HOST,
+        port: env.PORT,
         keepAliveTimeoutMs: env.HTTP_KEEP_ALIVE_TIMEOUT_MS,
         headersTimeoutMs: env.HTTP_HEADERS_TIMEOUT_MS,
         requestTimeoutMs: env.HTTP_REQUEST_TIMEOUT_MS,
         dbQueryTimeoutMs: env.DB_QUERY_TIMEOUT_MS,
       },
-      `Union Rental API listening on port ${env.PORT}`,
+      'Union Rental API listening',
     );
   });
 

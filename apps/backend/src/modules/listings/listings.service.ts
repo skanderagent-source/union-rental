@@ -38,6 +38,16 @@ type ViewRow = {
   approved_media_count: number;
 };
 
+type MapViewRow = {
+  id: string;
+  adresse: string;
+  quartier: string | null;
+  prix: unknown;
+  latitude: unknown;
+  longitude: unknown;
+  geocoding_status?: string | null;
+};
+
 function applyFilters(query: any, params: PublicListingsQuery) {
   // Sort order is fixed server-side; clients cannot inject ORDER BY columns.
   let q = query;
@@ -160,7 +170,7 @@ export async function listMapListings(params: Omit<PublicListingsQuery, 'page' |
   const { data, error } = await query;
   throwIfDatabaseError(error);
 
-  return ((data ?? []) as ViewRow[]).map(toMapListingResponse);
+  return ((data ?? []) as MapViewRow[]).map(toMapListingResponse);
 }
 
 export async function getPublicStats(): Promise<PublicStats> {

@@ -34,6 +34,11 @@ type ListingRow = {
   approved_media_count?: number;
 };
 
+type MapListingRow = Pick<
+  ListingRow,
+  'id' | 'adresse' | 'quartier' | 'prix' | 'latitude' | 'longitude' | 'geocoding_status'
+>;
+
 /** Supabase may return Postgres numeric columns as strings. */
 function toNullableNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -78,22 +83,32 @@ export function toPublicListingDetailResponse(
   });
 }
 
-export function toMapListingResponse(row: ListingRow): MapListing {
+export function toMapListingResponse(row: MapListingRow): MapListing {
   const status = row.geocoding_status;
   const allowed = new Set(['pending', 'success', 'failed', 'manual', 'approximate']);
-  const geocodingStatus = status && allowed.has(status)
-    ? status as MapListing['geocodingStatus']
-    : undefined;
 
-  return mapListingSchema.parse({
+  const parsed = mapListingSchema.parse({
     id: row.id,
     adresse: sanitizePublicText(row.adresse) ?? '',
     quartier: sanitizePublicText(row.quartier),
     prix: toNullableNumber(row.prix),
     latitude: toNullableNumber(row.latitude),
     longitude: toNullableNumber(row.longitude),
-    ...(geocodingStatus ? { geocodingStatus } : {}),
+    ...(status && allowed.has(status) ? { geocodingStatus: status } : {}),
   });
+
+  const result: MapListing = {
+    id: parsed.id,
+    adresse: parsed.adresse,
+    quartier: parsed.quartier,
+    prix: parsed.prix,
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
+  };
+  if (parsed.geocodingStatus !== undefined) {
+    result.geocodingStatus = parsed.geocodingStatus;
+  }
+  return result;
 }
 
 export function toPublicStatsResponse(stats: PublicStats): PublicStats {

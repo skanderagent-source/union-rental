@@ -18,6 +18,7 @@ const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     PORT: z.coerce.number().default(4001),
+    HOST: z.string().default('127.0.0.1'),
     PUBLIC_API_BASE_URL: z.string().url(),
     FRONTEND_ORIGIN: z.string().min(1),
     SUPABASE_URL: z.string().url(),
@@ -83,6 +84,14 @@ const envSchema = z
     }
 
     if (data.NODE_ENV === 'production') {
+      if (data.HOST !== '127.0.0.1') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['HOST'],
+          message: 'Production HOST must be 127.0.0.1 so the API is only reachable via the local reverse proxy',
+        });
+      }
+
       if (['debug', 'trace'].includes(data.LOG_LEVEL)) {
         ctx.addIssue({
           code: 'custom',

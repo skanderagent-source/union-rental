@@ -9,3 +9,8 @@ build/
 .vscode/
 coverage/
 *.log
+*.tsbuildinfo
+apps/backend/.local-storage/
+backup_before_split.sql
+backups/
+supabase/.temp/
