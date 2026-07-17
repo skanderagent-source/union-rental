@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/(favicon.png|manifest.webmanifest|og-default.jpg|og-inventory.jpg|og-about.jpg|robots.txt|sitemap.xml|sitemap-(.*).xml)",
+      "source": "/(favicon.ico|favicon.png|manifest.webmanifest|og-default.jpg|og-inventory.jpg|og-about.jpg|robots.txt|sitemap.xml|sitemap-(.*).xml)",
       "headers": [
         {
           "key": "X-Robots-Tag",

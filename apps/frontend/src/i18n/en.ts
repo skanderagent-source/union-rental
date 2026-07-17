@@ -4,6 +4,10 @@ export default {
   'nav.about': 'About Us',
   'nav.contact': 'Contact Us',
   'nav.ariaLabel': 'Main navigation',
+  'nav.openMenu': 'Open menu',
+  'nav.closeMenu': 'Close menu',
+  'nav.mobileMenuLabel': 'Mobile navigation',
+  'nav.langToggle': 'Switch to French',
   langBtn: 'FR',
   'hero.badge': 'Apartments available now',
   'hero.title': 'Your next<br>home in Montreal',
@@ -95,10 +99,6 @@ export default {
   'about.missionP3':
     "Whether you're looking for an affordable studio in St-Michel or a large family apartment in Outremont, we have the right home for you.",
   'about.missionImgAlt': 'Bright living room in a Greater Montreal apartment',
-  'about.contactTitle': 'Contact us',
-  'about.contactText':
-    'Use the callback or pre-qualification form to reach an agent. We serve Greater Montreal in French and English.',
-  'about.contactHours': 'Requests are handled Monday through Friday.',
   'value1.title': 'Transparency',
   'value1.text':
     'No hidden fees. Our selection criteria are clear from the start: sufficient income and no record with the Tribunal administratif du logement (TAL).',
@@ -119,9 +119,7 @@ export default {
     'Application review via SingleKey, income 2.5x the rent, and no record with the TAL.',
   'step4.title': 'Lease signing',
   'step4.text': 'Once approved, our director contacts you to finalize the rental.',
-  'aboutcta.title': 'Have a property to rent out?',
-  'aboutcta.sub':
-    "Are you a landlord looking to entrust your property's management to our team? Contact us to discuss.",
+  'aboutcta.title': 'Looking for a home or have a property to rent out?',
   'aboutcta.btnSee': 'View listings',
   'modal.title': 'Contact us',
   'tab.rappel': 'Quick callback',

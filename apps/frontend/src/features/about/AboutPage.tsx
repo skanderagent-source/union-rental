@@ -5,13 +5,10 @@ import { useContactModal } from '@/app/providers/ContactModalProvider';
 import { useReveal } from '@/hooks/useReveal';
 import { buildAboutSeo } from '@/lib/seoMeta';
 import { PageSeo } from '@/components/seo/PageSeo';
-import { routes, localizedRoute } from '@/lib/routes';
+import { localizedRoute } from '@/lib/routes';
 import { buildAboutJsonLd, ogImageUrlForTemplate } from '@/lib/structuredData';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
-import { TableOfContents } from '@/components/seo/TableOfContents';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { STATIC_IMAGE_DIMENSIONS } from '@/lib/staticImageDimensions';
-import { localizedCanonicalUrl } from '@/lib/siteUrl';
 import { Footer } from '@/components/layout/Footer';
 import heroAbout from '@/assets/hero-about.jpg';
 import missionImg from '@/assets/mission.jpg';
@@ -27,21 +24,6 @@ export function AboutPage() {
     () => buildAboutJsonLd(lang, { home: t('nav.accueil'), about: t('nav.about') }),
     [lang, t],
   );
-  const breadcrumbItems = useMemo(
-    () => [
-      { name: t('nav.accueil'), url: localizedCanonicalUrl(lang, routes.home) },
-      { name: t('nav.about'), url: localizedCanonicalUrl(lang, routes.about) },
-    ],
-    [lang, t],
-  );
-  const tocItems = useMemo(
-    () => [
-      { id: 'mission', label: t('about.missionTitle') },
-      { id: 'how', label: t('how.title') },
-      { id: 'contact', label: t('about.contactTitle') },
-    ],
-    [t],
-  );
 
   return (
     <div className="app-page" ref={revealRef}>
@@ -52,8 +34,6 @@ export function AboutPage() {
         ogImage={ogImageUrlForTemplate('about')}
         jsonLd={jsonLd}
       />
-      <Breadcrumbs items={breadcrumbItems} />
-      <TableOfContents items={tocItems} title={t('toc.title')} />
       <div className="about-hero">
         <OptimizedImage
           src={heroAbout}
@@ -113,18 +93,8 @@ export function AboutPage() {
           </div>
         </div>
 
-        <section className="about-contact reveal" id="contact">
-          <h2>{t('about.contactTitle')}</h2>
-          <p>{t('about.contactText')}</p>
-          <p>{t('about.contactHours')}</p>
-          <button type="button" className="btn-about-s" onClick={() => openContact(null)}>
-            {t('nav.contact')}
-          </button>
-        </section>
-
         <div className="about-cta reveal">
           <h2>{t('aboutcta.title')}</h2>
-          <p>{t('aboutcta.sub')}</p>
           <div className="about-cta-btns">
             <button type="button" className="btn-about-p" onClick={() => navigate(localizedRoute(lang, 'inventory'))}>
               {t('aboutcta.btnSee')}

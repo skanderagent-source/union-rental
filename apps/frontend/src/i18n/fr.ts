@@ -4,6 +4,10 @@ export default {
   'nav.about': 'Qui sommes-nous',
   'nav.contact': 'Nous contacter',
   'nav.ariaLabel': 'Navigation principale',
+  'nav.openMenu': 'Ouvrir le menu',
+  'nav.closeMenu': 'Fermer le menu',
+  'nav.mobileMenuLabel': 'Navigation mobile',
+  'nav.langToggle': 'Passer en anglais',
   langBtn: 'EN',
   'hero.badge': 'Logements disponibles maintenant',
   'hero.title': 'Votre prochain<br>chez-vous à Montréal',
@@ -95,10 +99,6 @@ export default {
   'about.missionP3':
     "Que vous cherchiez un studio abordable à St-Michel ou un grand appartement familial à Outremont, nous avons le logement qu'il vous faut.",
   'about.missionImgAlt': 'Salon lumineux dans un appartement du Grand Montréal',
-  'about.contactTitle': 'Nous joindre',
-  'about.contactText':
-    'Utilisez le formulaire de rappel ou de préqualification pour parler à un agent. Nous desservons le Grand Montréal en français et en anglais.',
-  'about.contactHours': 'Demandes traitées du lundi au vendredi.',
   'value1.title': 'Transparence',
   'value1.text':
     'Pas de frais cachés. Nos critères de sélection sont clairs dès le départ : revenu suffisant et absence de dossier au TAL.',
@@ -120,9 +120,7 @@ export default {
     'Vérification du dossier via SingleKey, revenu 2.5x le loyer, et absence de dossier TAL.',
   'step4.title': 'Signature du bail',
   'step4.text': 'Une fois approuvé, notre directrice vous contacte pour finaliser la location.',
-  'aboutcta.title': 'Vous avez un logement à louer ?',
-  'aboutcta.sub':
-    'Vous êtes propriétaire et souhaitez confier la gestion locative de votre bien à notre équipe ? Contactez-nous pour en discuter.',
+  'aboutcta.title': 'Vous cherchez un logement ou avez un logement à louer ?',
   'aboutcta.btnSee': "Voir l'inventaire",
   'modal.title': 'Nous contacter',
   'tab.rappel': 'Rappel rapide',

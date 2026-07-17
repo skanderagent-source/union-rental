@@ -260,6 +260,7 @@ export default async function middleware(request) {
     pathname.startsWith('/api/') ||
     pathname.startsWith('/assets/') ||
     pathname === '/favicon.png' ||
+    pathname === '/favicon.ico' ||
     pathname === '/manifest.webmanifest' ||
     pathname === '/robots.txt' ||
     pathname.startsWith('/sitemap')
@@ -351,5 +352,5 @@ export default async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/((?!assets/|api/|favicon.png|manifest.webmanifest|robots.txt|sitemap).*)'],
+  matcher: ['/((?!assets/|api/|favicon.png|favicon.ico|manifest.webmanifest|robots.txt|sitemap).*)'],
 };

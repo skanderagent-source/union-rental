@@ -9,6 +9,5 @@ export const STATIC_IMAGE_DIMENSIONS = {
   photoVieux: { width: 800, height: 600 },
   photoCentre: { width: 800, height: 600 },
   listingThumb: { width: 640, height: 480 },
-  logoNav: { width: 140, height: 40 },
-  logoFooter: { width: 160, height: 48 },
+  logoMenu: { width: 1323, height: 456 },
 } as const;

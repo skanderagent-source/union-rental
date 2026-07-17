@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { withLocalePath } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { routes } from '@/lib/routes';
-import logoFooter from '@/assets/logo-footer.png';
+import logoMenu from '@/assets/logo-menu.png';
 
 type FooterProps = { variant?: 'full' | 'short' };
 
@@ -16,7 +16,7 @@ export function Footer({ variant = 'short' }: FooterProps) {
         <div className="footer-top">
           <div className="footer-brand">
             <div className="footer-logo">
-              <img src={logoFooter} alt="LogiGo" className="footer-logo-img" width={160} height={48} />
+              <img src={logoMenu} alt="LogiGo" className="footer-logo-img" width={151} height={52} />
             </div>
             <p>{t(variant === 'full' ? 'footer.taglineLong' : 'footer.taglineShort')}</p>
           </div>
