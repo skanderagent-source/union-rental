@@ -1,9 +1,14 @@
 {
-  "name": "LogiGo",
+  "name": "LogiGo — Appartements à louer dans le Grand Montréal",
   "short_name": "LogiGo",
+  "description": "Appartements à louer dans le Grand Montréal. Parcourez l'inventaire et demandez un rappel.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf8f5",
   "theme_color": "#ffffff",
-  "icons": [{ "src": "/favicon.png", "sizes": "192x192", "type": "image/png" }]
+  "lang": "fr-CA",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
 }

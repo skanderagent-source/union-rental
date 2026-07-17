@@ -21,6 +21,7 @@ export function ContactModalProvider({ children }: { children: ReactNode }) {
 
   const closeContact = useCallback(() => {
     setIsOpen(false);
+    setContactListing(null);
   }, []);
 
   return (

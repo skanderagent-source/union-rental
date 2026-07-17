@@ -3,7 +3,34 @@ import { supabaseAdmin } from '../../db/supabaseAdmin.js';
 import { sendEmail, sendEmailToMany } from '../email/email.service.js';
 import { leadConfirmationClient, leadReceivedAdmin } from '../email/templates.js';
 import { logger } from '../../config/logger.js';
+import { logSecurityEvent } from '../../utils/securityEvents.js';
 import { stripHtml } from '../../utils/sanitize.js';
+import { toCreateLeadResponse } from '../../utils/publicResponses.js';
+
+const LEAD_INSERT_ALLOWLIST = [
+  'type_demande',
+  'listing_id',
+  'logement_id',
+  'ref_agent_id',
+  'nom',
+  'telephone',
+  'email',
+  'statut',
+  'revenu_mensuel',
+  'score_credit',
+  'date_demenagement',
+  'message',
+] as const;
+
+type LeadInsertRow = Partial<Record<(typeof LEAD_INSERT_ALLOWLIST)[number], unknown>>;
+
+function buildLeadInsertRow(values: LeadInsertRow): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  for (const key of LEAD_INSERT_ALLOWLIST) {
+    if (values[key] !== undefined) row[key] = values[key];
+  }
+  return row;
+}
 
 async function validateRefAgent(refAgentId: string | null | undefined): Promise<string | null> {
   if (!refAgentId) return null;
@@ -120,10 +147,11 @@ async function autoAssignReferralLead(leadId: string, agentId: string) {
   }
 }
 
-export async function createPublicLead(input: CreateLeadBody) {
+export async function createPublicLead(input: CreateLeadBody, req?: Pick<import('express').Request, 'method' | 'originalUrl' | 'ip'> & { id?: import('express').Request['id'] }) {
   if (input.hp) {
+    logSecurityEvent('honeypot_triggered', req);
     logger.info('Honeypot triggered — skipping lead insert');
-    return { received: true };
+    return toCreateLeadResponse({ received: true });
   }
 
   const validRefAgentId = await validateRefAgent(input.refAgentId);
@@ -145,18 +173,23 @@ export async function createPublicLead(input: CreateLeadBody) {
   const composedMessage = buildDemandMessage({
     typeDemande: input.typeDemande,
     listingAdresse: listing.adresse,
-    dossierTal: input.dossierTal,
-    revenuMensuel: input.typeDemande === 'prequal' ? input.revenuMensuel : null,
-    scoreCredit: input.typeDemande === 'prequal' ? input.scoreCredit : null,
+    ...(input.typeDemande === 'prequal'
+      ? {
+          dossierTal: input.dossierTal ?? null,
+          revenuMensuel: input.revenuMensuel ?? null,
+          scoreCredit: input.scoreCredit ?? null,
+        }
+      : {}),
     dateDemenagement: input.dateDemenagement ?? null,
     userMessage,
   });
 
   const email = input.email?.trim() || null;
 
-  const insertRow: Record<string, unknown> = {
+  const insertRow = buildLeadInsertRow({
     type_demande: input.typeDemande,
     listing_id: listing.id,
+    logement_id: listing.id ?? undefined,
     ref_agent_id: validRefAgentId,
     nom,
     telephone,
@@ -166,11 +199,7 @@ export async function createPublicLead(input: CreateLeadBody) {
     score_credit: input.typeDemande === 'prequal' ? input.scoreCredit : null,
     date_demenagement: input.dateDemenagement ?? null,
     message: composedMessage,
-  };
-
-  if (listing.id) {
-    insertRow.logement_id = listing.id;
-  }
+  });
 
   const leadId = await insertDemandRow(insertRow);
   if (validRefAgentId) {
@@ -218,5 +247,5 @@ export async function createPublicLead(input: CreateLeadBody) {
     });
   }
 
-  return { received: true };
+  return toCreateLeadResponse({ received: true });
 }

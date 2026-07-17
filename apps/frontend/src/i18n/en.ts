@@ -3,6 +3,7 @@ export default {
   'nav.inventaire': 'Our Listings',
   'nav.about': 'About Us',
   'nav.contact': 'Contact Us',
+  'nav.ariaLabel': 'Main navigation',
   langBtn: 'FR',
   'hero.badge': 'Apartments available now',
   'hero.title': 'Your next<br>home in Montreal',
@@ -55,6 +56,7 @@ export default {
   'footer.singlekey': 'SingleKey verification',
   'footer.dossiers': 'Applications Mon-Fri',
   'footer.rights': 'All rights reserved',
+  'footer.ariaLabel': 'Site footer',
   'inv.title': 'Our listings',
   'inv.subtitleLoading': 'Hundreds of listings available in Montreal and surrounding areas',
   'search.label': 'Search',
@@ -92,6 +94,11 @@ export default {
     'Our process is designed to be fast, transparent, and secure. From your first request, a dedicated agent guides you all the way to lease signing.',
   'about.missionP3':
     "Whether you're looking for an affordable studio in St-Michel or a large family apartment in Outremont, we have the right home for you.",
+  'about.missionImgAlt': 'Bright living room in a Greater Montreal apartment',
+  'about.contactTitle': 'Contact us',
+  'about.contactText':
+    'Use the callback or pre-qualification form to reach an agent. We serve Greater Montreal in French and English.',
+  'about.contactHours': 'Requests are handled Monday through Friday.',
   'value1.title': 'Transparency',
   'value1.text':
     'No hidden fees. Our selection criteria are clear from the start: sufficient income and no record with the Tribunal administratif du logement (TAL).',
@@ -163,12 +170,34 @@ export default {
   'toast.badPhone': '⚠️ Invalid phone number',
   'toast.badEmail': '⚠️ Invalid email address',
   'toast.badCreditScore': '⚠️ Credit score must be between 300 and 900',
+  'toast.offline': '⚠️ Offline — connect to submit the form',
   'deeplink.gone':
     'This listing is no longer available — contact us for similar options',
   'meta.title': 'LogiGo — Apartments for rent in Montreal',
+  'meta.home.title': 'Apartments for rent in Montreal',
+  'meta.home.description':
+    'Browse verified apartments in Greater Montreal. Up-to-date inventory and online callback requests.',
+  'meta.inventory.title': 'Inventory — Apartments for rent',
+  'meta.inventory.description':
+    'Search available apartments in Greater Montreal by neighborhood, size, and budget. Interactive map and photos.',
+  'meta.inventory.filteredDescription':
+    'Filtered results in the LogiGo inventory. Refine your search or browse all available listings.',
+  'meta.about.title': 'About us — LogiGo',
+  'meta.about.description':
+    'LogiGo makes apartment hunting in Montreal easier with verified inventory and support from local agents.',
+  'meta.notfound.title': 'Page not found',
+  'meta.notfound.description':
+    'This page does not exist. Return to LogiGo home to browse available apartments in Greater Montreal.',
+  'meta.unavailable.title': 'Listing unavailable',
+  'meta.unavailable.description':
+    'This listing is no longer available. Contact LogiGo for similar options in Montreal.',
   'map.approx': 'Approximate location',
   'pag.prev': 'Previous',
   'pag.next': 'Next',
+  'pag.first': 'First page',
+  'pag.ariaLabel': 'Inventory pagination',
+  'related.title': 'Similar listings',
+  'toc.title': 'On this page',
   'detail.back': '← Back to listings',
   'detail.price': 'Monthly rent',
   'detail.size': 'Size',
@@ -184,5 +213,9 @@ export default {
   'detail.nextMedia': 'Next media',
   'error.retry': 'Retry',
   'notfound.title': 'Page not found',
+  'notfound.message':
+    'This address does not exist or has changed. Browse our apartment inventory across Greater Montreal.',
   'notfound.back': 'Back to home',
+  'notfound.browse': 'Browse inventory',
+  'notfound.about': 'About us',
 } as Record<string, string>;

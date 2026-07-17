@@ -3,16 +3,24 @@ import {
   type PublicListing,
   type PublicListingDetail,
   type PublicListingsQuery,
-  type MapListing,
+  type PublicMediaItem,
   type PublicStats,
   type QuartierCount,
-  type PublicMediaItem,
 } from '@union-rental/shared';
 import { supabaseAdmin } from '../../db/supabaseAdmin.js';
+import { throwIfDatabaseError } from '../../utils/databaseError.js';
 import { resolveViewUrl, resolveDownloadUrl } from '../media/mediaUrl.service.js';
 import { openLocalObject, localObjectExists } from '../media/localStorage.service.js';
-import { sanitizeSearchTerm } from '../../utils/sanitize.js';
+import { sanitizeSearchTerm, escapeIlikePattern } from '../../utils/sanitize.js';
 import { HttpError } from '../../utils/httpErrors.js';
+import {
+  toMapListingResponse,
+  toPublicListingDetailResponse,
+  toPublicListingResponse,
+  toPublicStatsResponse,
+  toQuartierCountResponse,
+  toMediaDownloadUrlResponse,
+} from '../../utils/publicResponses.js';
 
 type ViewRow = {
   id: string;
@@ -31,9 +39,10 @@ type ViewRow = {
 };
 
 function applyFilters(query: any, params: PublicListingsQuery) {
+  // Sort order is fixed server-side; clients cannot inject ORDER BY columns.
   let q = query;
   if (params.q) {
-    const s = sanitizeSearchTerm(params.q);
+    const s = escapeIlikePattern(sanitizeSearchTerm(params.q));
     if (s) q = q.or(`adresse.ilike.%${s}%,quartier.ilike.%${s}%,notes.ilike.%${s}%`);
   }
   if (params.quartier) q = q.eq('quartier', params.quartier);
@@ -78,45 +87,8 @@ async function attachThumbnails(rows: ViewRow[]): Promise<PublicListing[]> {
 
   return rows.map((r) => {
     const thumb = thumbUrls.get(r.id);
-    return {
-      id: r.id,
-      adresse: r.adresse,
-      quartier: r.quartier,
-      prix: r.prix,
-      taille: r.taille,
-      electromenagers: r.electromenagers,
-      notes: r.notes,
-      statut: r.statut,
-      latitude: r.latitude,
-      longitude: r.longitude,
-      approvedImageCount: r.approved_image_count ?? 0,
-      approvedMediaCount: r.approved_media_count ?? 0,
-      thumbnailUrl: thumb?.url ?? null,
-      thumbnailType: thumb?.type ?? null,
-    };
+    return toPublicListingResponse(r, thumb ?? null);
   });
-}
-
-function toPublicListing(
-  r: ViewRow,
-  thumbnail: { url: string; type: 'image' | 'video' } | null,
-): PublicListing {
-  return {
-    id: r.id,
-    adresse: r.adresse,
-    quartier: r.quartier,
-    prix: r.prix,
-    taille: r.taille,
-    electromenagers: r.electromenagers,
-    notes: r.notes,
-    statut: r.statut,
-    latitude: r.latitude,
-    longitude: r.longitude,
-    approvedImageCount: r.approved_image_count ?? 0,
-    approvedMediaCount: r.approved_media_count ?? 0,
-    thumbnailUrl: thumbnail?.url ?? null,
-    thumbnailType: thumbnail?.type ?? null,
-  };
 }
 
 export async function listPublicListings(params: PublicListingsQuery) {
@@ -132,20 +104,21 @@ export async function listPublicListings(params: PublicListingsQuery) {
   query = applyFilters(query, params);
 
   const { data, error, count } = await query;
-  if (error) throw error;
+  throwIfDatabaseError(error);
 
   const items = await attachThumbnails((data ?? []) as ViewRow[]);
   return { items, page: params.page, pageSize: params.pageSize, total: count ?? 0 };
 }
 
 export async function getPublicListingById(id: string): Promise<PublicListingDetail> {
+  // Row-level access: only listings in public_available_listings (Available, not deleted).
   const { data, error } = await supabaseAdmin
     .from('public_available_listings')
     .select('*')
     .eq('id', id)
     .maybeSingle();
 
-  if (error) throw error;
+  throwIfDatabaseError(error);
   if (!data) {
     throw new HttpError(404, 'LISTING_NOT_AVAILABLE', "Ce logement n'est plus disponible");
   }
@@ -173,10 +146,7 @@ export async function getPublicListingById(id: string): Promise<PublicListingDet
     ? { url: media[0].viewUrl, type: media[0].type }
     : null;
 
-  return {
-    ...toPublicListing(row, thumbnail),
-    media,
-  };
+  return toPublicListingDetailResponse(row, thumbnail, media);
 }
 
 export async function listMapListings(params: Omit<PublicListingsQuery, 'page' | 'pageSize'>) {
@@ -188,9 +158,9 @@ export async function listMapListings(params: Omit<PublicListingsQuery, 'page' |
   query = applyFilters(query, { ...params, page: 1, pageSize: MAP_RESULT_CAP });
 
   const { data, error } = await query;
-  if (error) throw error;
+  throwIfDatabaseError(error);
 
-  return (data ?? []) as MapListing[];
+  return ((data ?? []) as ViewRow[]).map(toMapListingResponse);
 }
 
 export async function getPublicStats(): Promise<PublicStats> {
@@ -199,29 +169,29 @@ export async function getPublicStats(): Promise<PublicStats> {
     .select('id', { count: 'exact', head: true })
     .is('deleted_at', null);
 
-  if (totalErr) throw totalErr;
+  throwIfDatabaseError(totalErr);
 
   const { count: availableListings, error: availErr } = await supabaseAdmin
     .from('public_available_listings')
     .select('id', { count: 'exact', head: true });
 
-  if (availErr) throw availErr;
+  throwIfDatabaseError(availErr);
 
   const { data: quartierRows, error: qErr } = await supabaseAdmin
     .from('public_available_listings')
     .select('quartier');
 
-  if (qErr) throw qErr;
+  throwIfDatabaseError(qErr);
 
   const quartiers = new Set(
     (quartierRows ?? []).map((r) => r.quartier).filter(Boolean) as string[],
   );
 
-  return {
+  return toPublicStatsResponse({
     totalListings: totalListings ?? 0,
     availableListings: availableListings ?? 0,
     quartierCount: quartiers.size,
-  };
+  });
 }
 
 export async function getQuartierCounts(): Promise<QuartierCount[]> {
@@ -229,7 +199,7 @@ export async function getQuartierCounts(): Promise<QuartierCount[]> {
     .from('public_available_listings')
     .select('quartier');
 
-  if (error) throw error;
+  throwIfDatabaseError(error);
 
   const counts = new Map<string, number>();
   for (const row of data ?? []) {
@@ -237,9 +207,11 @@ export async function getQuartierCounts(): Promise<QuartierCount[]> {
     counts.set(row.quartier, (counts.get(row.quartier) ?? 0) + 1);
   }
 
-  return [...counts.entries()]
-    .map(([quartier, count]) => ({ quartier, count }))
-    .sort((a, b) => b.count - a.count);
+  return toQuartierCountResponse(
+    [...counts.entries()]
+      .map(([quartier, count]) => ({ quartier, count }))
+      .sort((a, b) => b.count - a.count),
+  );
 }
 
 export async function getMediaDownloadUrl(mediaId: string) {
@@ -249,7 +221,7 @@ export async function getMediaDownloadUrl(mediaId: string) {
     .eq('id', mediaId)
     .maybeSingle();
 
-  if (error) throw error;
+  throwIfDatabaseError(error);
   if (!media || media.status !== 'approved' || !media.upload_completed_at) {
     throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
   }
@@ -265,7 +237,7 @@ export async function getMediaDownloadUrl(mediaId: string) {
   }
 
   const url = await resolveDownloadUrl(media.object_key, media.original_filename);
-  return { url, expiresInSeconds: 300 };
+  return toMediaDownloadUrlResponse({ url, expiresInSeconds: 300 });
 }
 
 export async function servePublicMediaObject(objectKey: string, inline: boolean) {
@@ -279,7 +251,7 @@ export async function servePublicMediaObject(objectKey: string, inline: boolean)
     .eq('object_key', objectKey)
     .maybeSingle();
 
-  if (error) throw error;
+  throwIfDatabaseError(error);
   if (!media?.upload_completed_at || media.status !== 'approved') {
     throw new HttpError(404, 'NOT_FOUND', 'Média introuvable');
   }

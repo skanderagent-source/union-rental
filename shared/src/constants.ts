@@ -75,12 +75,21 @@ export const REFERRAL_USERNAME_MIN_LENGTH = 3;
 export const REFERRAL_USERNAME_MAX_LENGTH = 32;
 export const REFERRAL_USERNAME_PATTERN = /^[a-z0-9]+$/;
 
+export function slugifyFromTitle(title: string): string {
+  return title
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, REFERRAL_USERNAME_MAX_LENGTH);
+}
+
 export function normalizeReferralUsername(value: string): string {
-  return value.trim().toLowerCase();
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 export function isValidReferralUsername(value: string): boolean {
-  const normalized = normalizeReferralUsername(value);
+  const normalized = value.trim().toLowerCase();
   return (
     normalized.length >= REFERRAL_USERNAME_MIN_LENGTH &&
     normalized.length <= REFERRAL_USERNAME_MAX_LENGTH &&
@@ -88,6 +97,29 @@ export function isValidReferralUsername(value: string): boolean {
   );
 }
 
+/** Username segment derived from agents.nom — must match agents.referral_slug. */
+export function referralUsernameFromNom(nom: string | null | undefined): string | null {
+  const username = normalizeReferralUsername(nom ?? '');
+  return isValidReferralUsername(username) ? username : null;
+}
+
 export const DEFAULT_PAGE_SIZE = 24;
 export const MAX_PAGE_SIZE = 100;
+export const MAX_LISTINGS_OFFSET = 10_000;
+/** Cap absurd inventory pagination URLs to block crawl traps. */
+export const MAX_INVENTORY_PAGE = 500;
 export const MAP_RESULT_CAP = 2000;
+/** Ignore single-character catalog searches to reduce expensive ilike scans. */
+export const MIN_SEARCH_QUERY_LENGTH = 2;
+
+export const LISTING_ID_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const ALLOWED_LISTING_SIZE_FILTERS = Object.keys(SIZE_LABELS) as [
+  keyof typeof SIZE_LABELS,
+  ...(keyof typeof SIZE_LABELS)[],
+];
+
+export function isValidListingId(value: string): boolean {
+  return LISTING_ID_UUID_RE.test(value.trim());
+}

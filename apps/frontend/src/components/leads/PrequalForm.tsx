@@ -1,6 +1,17 @@
 import { useState } from 'react';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useUnsavedFormWarning } from '@/hooks/useUnsavedFormWarning';
+import { formatPhoneInput, phoneDigitCount } from '@/lib/phoneFormat';
+import {
+  sanitizeDateField,
+  sanitizeDigits,
+  sanitizeEmail,
+  sanitizeMessage,
+  sanitizeMessageInput,
+  sanitizePersonName,
+  sanitizePhoneForSubmit,
+} from '@/lib/sanitizeLeadInput';
 
 type Props = {
   submitting: boolean;
@@ -21,13 +32,18 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
   const [hp, setHp] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const dirty = !!(nom.trim() || tel.trim() || email.trim() || revenu || cote.trim() || date || msg.trim());
+  useUnsavedFormWarning(dirty && !submitting);
+
   const handleSubmit = async () => {
+    if (submitting) return;
+
     const next: Record<string, string> = {};
     if (!nom.trim() || !tel.trim() || !email.trim() || !revenu || !cote.trim()) {
       showToast(t('toast.missingFields'));
       next.form = t('toast.missingFields');
     }
-    if (tel.replace(/\D/g, '').length < 7) {
+    if (phoneDigitCount(tel) < 7) {
       showToast(t('toast.badPhone'));
       next.tel = t('toast.badPhone');
     }
@@ -35,25 +51,30 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
       showToast(t('toast.badEmail'));
       next.email = t('toast.badEmail');
     }
-    const scoreCredit = parseInt(cote, 10);
+    const scoreCredit = Number.parseInt(cote, 10);
     if (!cote.trim() || !/^\d+$/.test(cote) || scoreCredit < 300 || scoreCredit > 900) {
       showToast(t('toast.badCreditScore'));
       next.cote = t('toast.badCreditScore');
+    }
+    const revenuMensuel = Number.parseInt(revenu, 10);
+    if (!revenu || !Number.isFinite(revenuMensuel) || revenuMensuel < 0 || revenuMensuel > 1_000_000) {
+      showToast(t('toast.missingFields'));
+      next.form = t('toast.missingFields');
     }
     setErrors(next);
     if (Object.keys(next).length) return;
 
     await onSubmit({
       typeDemande: 'prequal',
-      nom: nom.trim(),
-      telephone: tel.trim(),
-      email: email.trim(),
-      revenuMensuel: parseInt(revenu, 10) || null,
+      nom: sanitizePersonName(nom),
+      telephone: sanitizePhoneForSubmit(tel),
+      email: sanitizeEmail(email),
+      revenuMensuel: revenuMensuel,
       scoreCredit,
       dossierTal: tal === 'true',
-      dateDemenagement: date.trim() || null,
-      message: msg.trim() || null,
-      hp,
+      dateDemenagement: sanitizeDateField(date),
+      message: msg.trim() ? sanitizeMessage(msg) : null,
+      hp: hp.slice(0, 200),
     });
   };
 
@@ -61,22 +82,38 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
     <div className="form-section active" id="form-prequal">
       <div className="field" style={{ position: 'absolute', left: -9999, opacity: 0 }} aria-hidden="true">
         <label htmlFor="p-hp">{t('field.hp')}</label>
-        <input id="p-hp" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} />
+        <input
+          id="p-hp"
+          tabIndex={-1}
+          autoComplete="off"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          value={hp}
+          onChange={(e) => setHp(e.target.value)}
+        />
       </div>
       <div className="field">
         <label htmlFor="p-nom">{t('field.nom')}</label>
         <input
           id="p-nom"
           maxLength={120}
+          autoComplete="name"
           placeholder={t('field.nomPh')}
           value={nom}
-          onChange={(e) => setNom(e.target.value)}
+          onChange={(e) => setNom(sanitizePersonName(e.target.value))}
         />
       </div>
       <div className="field-row">
         <div className="field">
           <label htmlFor="p-tel">{t('field.tel')}</label>
-          <input id="p-tel" maxLength={30} value={tel} onChange={(e) => setTel(e.target.value)} />
+          <input
+            id="p-tel"
+            maxLength={30}
+            autoComplete="tel"
+            inputMode="tel"
+            value={tel}
+            onChange={(e) => setTel(formatPhoneInput(e.target.value))}
+          />
           {errors.tel && <div className="field-error">{errors.tel}</div>}
         </div>
         <div className="field">
@@ -85,9 +122,10 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
             id="p-email"
             type="email"
             maxLength={120}
+            autoComplete="email"
             placeholder={t('field.emailPh')}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
           />
           {errors.email && <div className="field-error">{errors.email}</div>}
         </div>
@@ -100,8 +138,10 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
             type="number"
             min={0}
             max={1000000}
+            autoComplete="off"
+            inputMode="numeric"
             value={revenu}
-            onChange={(e) => setRevenu(e.target.value)}
+            onChange={(e) => setRevenu(sanitizeDigits(e.target.value, 7))}
           />
         </div>
         <div className="field">
@@ -119,6 +159,7 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
+          autoComplete="off"
           minLength={3}
           maxLength={3}
           placeholder={t('field.coteCreditPh')}
@@ -132,6 +173,7 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
         <input
           id="p-date"
           type="date"
+          autoComplete="off"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
@@ -141,13 +183,14 @@ export function PrequalForm({ submitting, onSubmit }: Props) {
         <textarea
           id="p-msg"
           maxLength={2000}
+          autoComplete="off"
           placeholder={t('field.msgPhPrequal')}
           value={msg}
-          onChange={(e) => setMsg(e.target.value)}
+          onChange={(e) => setMsg(sanitizeMessageInput(e.target.value))}
         />
       </div>
       {errors.form && <div className="field-error">{errors.form}</div>}
-      <button type="button" className="btn-submit" disabled={submitting} onClick={handleSubmit}>
+      <button type="button" className="btn-submit" disabled={submitting} onClick={() => void handleSubmit()}>
         {submitting ? t('btn.sending') : t('btn.prequalSubmit')}
       </button>
     </div>

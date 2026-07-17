@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import { sanitizeConfiguredEmailAddress } from '../utils/emailSafe.js';
 
 config();
 
@@ -39,6 +40,15 @@ const envSchema = z
     RATE_LIMIT_LEADS_MAX: z.coerce.number().default(20),
     RATE_LIMIT_READS_WINDOW_MS: z.coerce.number().default(60000),
     RATE_LIMIT_READS_MAX: z.coerce.number().default(240),
+    TRUST_PROXY: z.coerce.number().int().min(0).default(1),
+    TRUSTED_HOSTS: z.string().optional(),
+    JSON_BODY_LIMIT: z.string().default('100kb'),
+    HTTP_KEEP_ALIVE_TIMEOUT_MS: z.coerce.number().int().positive().default(65_000),
+    HTTP_HEADERS_TIMEOUT_MS: z.coerce.number().int().positive().default(66_000),
+    HTTP_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+    DB_QUERY_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+    SHUTDOWN_GRACE_MS: z.coerce.number().int().positive().default(10_000),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   })
   .superRefine((data, ctx) => {
     if (data.EMAIL_ENABLED) {
@@ -54,6 +64,77 @@ const envSchema = z
           code: 'custom',
           path: ['EMAIL_FROM'],
           message: 'EMAIL_FROM is required when EMAIL_ENABLED=true',
+        });
+      } else if (!sanitizeConfiguredEmailAddress(data.EMAIL_FROM)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['EMAIL_FROM'],
+          message: 'EMAIL_FROM must be a valid email address or "Name <email@domain>"',
+        });
+      }
+    }
+
+    if (data.EMAIL_REPLY_TO && !sanitizeConfiguredEmailAddress(data.EMAIL_REPLY_TO)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EMAIL_REPLY_TO'],
+        message: 'EMAIL_REPLY_TO must be a valid email address without control characters',
+      });
+    }
+
+    if (data.NODE_ENV === 'production') {
+      if (['debug', 'trace'].includes(data.LOG_LEVEL)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['LOG_LEVEL'],
+          message: 'LOG_LEVEL must not be debug or trace in production',
+        });
+      }
+
+      if (!data.PUBLIC_API_BASE_URL.startsWith('https://')) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['PUBLIC_API_BASE_URL'],
+          message: 'PUBLIC_API_BASE_URL must use https in production',
+        });
+      }
+
+      for (const origin of data.FRONTEND_ORIGIN.split(',')) {
+        const trimmed = origin.trim();
+        if (!/^https:\/\//i.test(trimmed)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['FRONTEND_ORIGIN'],
+            message: 'Production FRONTEND_ORIGIN values must use https',
+          });
+        }
+        if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(trimmed)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['FRONTEND_ORIGIN'],
+            message: 'Production FRONTEND_ORIGIN must not include localhost',
+          });
+        }
+      }
+    }
+
+    for (const origin of data.FRONTEND_ORIGIN.split(',')) {
+      const trimmed = origin.trim();
+      if (!trimmed) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['FRONTEND_ORIGIN'],
+          message: 'FRONTEND_ORIGIN must not contain empty entries',
+        });
+        continue;
+      }
+      try {
+        new URL(trimmed);
+      } catch {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['FRONTEND_ORIGIN'],
+          message: `Invalid FRONTEND_ORIGIN URL: ${trimmed}`,
         });
       }
     }

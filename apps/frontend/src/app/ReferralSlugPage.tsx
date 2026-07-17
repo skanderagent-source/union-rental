@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { isValidReferralUsername, normalizeReferralUsername } from '@union-rental/shared';
+import { buildInventoryReferralPath } from '@/lib/safeNavigation';
 
 /** Legacy /r/:slug URLs → /inventaire/:username */
 export function ReferralSlugPage() {
@@ -8,13 +8,8 @@ export function ReferralSlugPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const normalized = normalizeReferralUsername(slug ?? '');
-    if (!isValidReferralUsername(normalized)) {
-      navigate('/inventaire', { replace: true });
-      return;
-    }
-    const listingQuery = listingId ? `?listing=${listingId}` : '';
-    navigate(`/inventaire/${normalized}${listingQuery}`, { replace: true });
+    const path = buildInventoryReferralPath(slug ?? '', listingId);
+    navigate(path ?? '/inventaire', { replace: true });
   }, [slug, listingId, navigate]);
 
   return <div className="empty">Chargement…</div>;

@@ -79,3 +79,33 @@ Deploy to the old `union-rental.vercel.app` project:
 Update Fast Rental legacy `CLIENT_SITE_URL` to `https://YOUR_UNION_DOMAIN`.
 
 Move `index.html` to `legacy/index.html` in this repo after smoke tests pass.
+
+## SEO (automatic)
+
+Production serves:
+
+- `https://YOUR_UNION_DOMAIN/robots.txt` — proxied from the backend via Vercel (`/api/seo/robots`)
+- `https://YOUR_UNION_DOMAIN/sitemap.xml` — live inventory from `/seo/sitemap.xml` on the API
+
+Crawlers discover the sitemap via the `Sitemap:` line in `robots.txt`. No post-deploy SEO commands are required.
+
+Preview, staging, and local builds block indexing (`Disallow: /` and `noindex` meta tags).
+
+Indexability rules (filtered inventory, referral paths, sitemap eligibility, navigation depth) are enforced in application code and covered by `npm test`.
+
+Optional overrides:
+
+- Backend: `SEO_ALLOW_INDEXING=true|false`
+- Frontend build: `VITE_SEO_ALLOW_INDEXING=true|false`
+
+### URL canonicalization (production)
+
+Vercel `middleware.js` enforces:
+
+- One production hostname (`VITE_SITE_URL`) with **301** redirects from alternates
+- Lowercase paths, no trailing slashes, stripped tracking params (`utm_*`, `fbclid`, `ref`, etc.)
+- Legacy `/r/:slug` links → `/inventaire` or `/logement/:id` in a **single hop**
+- **404** for unknown paths; **410** for removed listings; **200** for available listings
+- Static error pages include links to home, inventory, and about
+
+Ensure `VITE_API_BASE_URL` is set on Vercel so listing status checks work at the edge.

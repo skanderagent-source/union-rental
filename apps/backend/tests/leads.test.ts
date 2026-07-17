@@ -359,4 +359,25 @@ describe('lead rate limiting', () => {
     }
     expect(lastStatus).toBe(429);
   });
+
+  it('includes Retry-After on 429 responses', async () => {
+    setupLeadMocks();
+    let limited: Awaited<ReturnType<typeof request>> | null = null;
+    for (let i = 0; i < 21; i += 1) {
+      const res = await request(app).post('/api/public/leads').send({
+        typeDemande: 'rappel',
+        nom: `Retry User ${i}`,
+        telephone: '5145551234',
+        hp: 'filled',
+      });
+      if (res.status === 429) {
+        limited = res;
+        break;
+      }
+    }
+
+    expect(limited).not.toBeNull();
+    expect(limited!.headers['retry-after']).toMatch(/^\d+$/);
+    expect(Number(limited!.headers['retry-after'])).toBeGreaterThan(0);
+  });
 });

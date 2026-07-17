@@ -1,29 +1,30 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { withLocalePath } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
+import { routes } from '@/lib/routes';
 import logoFooter from '@/assets/logo-footer.png';
 
 type FooterProps = { variant?: 'full' | 'short' };
 
 export function Footer({ variant = 'short' }: FooterProps) {
-  const { t } = useI18n();
-  const navigate = useNavigate();
+  const { t, lang } = useI18n();
   const year = new Date().getFullYear();
 
   return (
-    <footer style={{ marginTop: variant === 'full' ? undefined : '48px' }}>
+    <footer aria-label={t('footer.ariaLabel')}>
       <div className="footer-inner">
         <div className="footer-top">
           <div className="footer-brand">
             <div className="footer-logo">
-              <img src={logoFooter} alt="LogiGo" className="footer-logo-img" />
+              <img src={logoFooter} alt="LogiGo" className="footer-logo-img" width={160} height={48} />
             </div>
             <p>{t(variant === 'full' ? 'footer.taglineLong' : 'footer.taglineShort')}</p>
           </div>
           <div className="footer-col">
             <h4>{t('footer.navTitle')}</h4>
-            <a onClick={() => navigate('/')}>{t('nav.accueil')}</a>
-            <a onClick={() => navigate('/inventaire')}>{t('nav.inventaire')}</a>
-            <a onClick={() => navigate('/a-propos')}>{t('nav.about')}</a>
+            <Link to={withLocalePath(lang, routes.home)}>{t('nav.accueil')}</Link>
+            <Link to={withLocalePath(lang, routes.inventory)}>{t('nav.inventaire')}</Link>
+            <Link to={withLocalePath(lang, routes.about)}>{t('nav.about')}</Link>
           </div>
           <div className="footer-col">
             <h4>{t('footer.processTitle')}</h4>

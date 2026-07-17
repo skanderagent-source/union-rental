@@ -17,7 +17,7 @@ describe('resolveReferralSlug', () => {
   it('resolves alphanumeric referral_slug', async () => {
     const slugChain = createThenableChain({ data: null, error: null });
     slugChain.maybeSingle = vi.fn(async () => ({
-      data: { id: 'agent-1', nom: 'Agent', actif: true },
+      data: { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', nom: 'Agent', actif: true },
       error: null,
     }));
 
@@ -28,7 +28,7 @@ describe('resolveReferralSlug', () => {
     );
 
     const result = await resolveReferralSlug('frenki');
-    expect(result.agentId).toBe('agent-1');
+    expect(result.agentId).toBe('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
   });
 
   it('rejects usernames with dots or symbols', async () => {

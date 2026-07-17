@@ -1,0 +1,38 @@
+/* Minimal above-the-fold shell — inlined in index.html; full styles load via the main bundle. */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter Variable', 'Inter', sans-serif;
+  background: #faf8f5;
+  color: #171412;
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-page {
+  min-height: 100vh;
+  padding-top: 66px;
+}
+
+#main-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  height: 66px;
+  background: rgba(255, 255, 255, 0.93);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid #e9e2d8;
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  justify-content: space-between;
+}

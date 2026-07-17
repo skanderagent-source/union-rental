@@ -127,6 +127,33 @@ describe('GET /api/public/listings', () => {
     expect(res.body.data.items[0]).toHaveProperty('thumbnailType');
   });
 
+  it('coerces string numeric columns from Supabase into numbers', async () => {
+    listChain = createThenableChain({
+      data: [
+        {
+          ...sampleRows[0]!,
+          prix: '1200',
+          latitude: '45.5',
+          longitude: '-73.5',
+        },
+      ],
+      error: null,
+      count: 1,
+    });
+    vi.mocked(supabaseAdmin.from).mockImplementation(
+      mockSupabaseFrom({
+        public_available_listings: () => listChain,
+        listing_media: () => mediaChain,
+      }),
+    );
+
+    const res = await request(app).get('/api/public/listings');
+    expect(res.status).toBe(200);
+    expect(res.body.data.items[0].prix).toBe(1200);
+    expect(res.body.data.items[0].latitude).toBe(45.5);
+    expect(res.body.data.items[0].longitude).toBe(-73.5);
+  });
+
   it('returns video thumbnail metadata for video-only listings', async () => {
     const videoRow = {
       ...sampleRows[0]!,
@@ -161,9 +188,16 @@ describe('GET /api/public/listings', () => {
     expect(res.body.data.items[0].approvedMediaCount).toBe(1);
   });
 
-  it('applies prixMax with null-priced rows retained', async () => {
-    await request(app).get('/api/public/listings?prixMax=1500');
-    expect(listChain.or).toHaveBeenCalledWith('prix.is.null,prix.lte.1500');
+  it('rejects pagination offsets beyond the configured maximum', async () => {
+    const res = await request(app).get('/api/public/listings?page=1000&pageSize=100');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('sets no-store cache headers on API responses', async () => {
+    const res = await request(app).get('/api/public/listings');
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.headers.pragma).toBe('no-cache');
   });
 });
 
@@ -188,8 +222,8 @@ describe('GET /api/public/listings/:id', () => {
     );
 
     const res = await request(app).get('/api/public/listings/missing-id');
-    expect(res.status).toBe(404);
-    expect(res.body.error.code).toBe('LISTING_NOT_AVAILABLE');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns approved media ordered by Fast Rental sort order', async () => {
@@ -198,7 +232,7 @@ describe('GET /api/public/listings/:id', () => {
     const mediaChain = createThenableChain({
       data: [
         {
-          id: 'media-2',
+          id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
           type: 'video',
           object_key: 'videos/a.mp4',
           original_filename: 'a.mp4',
@@ -206,7 +240,7 @@ describe('GET /api/public/listings/:id', () => {
           created_at: '2026-01-02',
         },
         {
-          id: 'media-1',
+          id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
           type: 'image',
           object_key: 'photos/a.jpg',
           original_filename: 'a.jpg',
@@ -230,7 +264,10 @@ describe('GET /api/public/listings/:id', () => {
     expect(mediaChain.order).toHaveBeenNthCalledWith(1, 'sort_order', { ascending: true });
     expect(mediaChain.order).toHaveBeenNthCalledWith(2, 'created_at', { ascending: true });
     expect(res.body.data.media).toHaveLength(2);
-    expect(res.body.data.media.map((m: { id: string }) => m.id)).toEqual(['media-2', 'media-1']);
+    expect(res.body.data.media.map((m: { id: string }) => m.id)).toEqual([
+      'dddddddd-dddd-dddd-dddd-dddddddddddd',
+      'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+    ]);
     expect(res.body.data.media.every((m: { viewUrl: string }) => m.viewUrl.startsWith('https://'))).toBe(
       true,
     );

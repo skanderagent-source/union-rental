@@ -3,11 +3,22 @@ import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { env } from '../../config/env.js';
 
+/** Resolve object keys under the configured storage root; reject traversal and absolute paths. */
+export function resolveSafeLocalPath(objectKey: string, root: string): string | null {
+  if (!objectKey || objectKey.includes('\0') || path.isAbsolute(objectKey)) return null;
+
+  const normalizedRoot = path.resolve(root);
+  const target = path.resolve(normalizedRoot, objectKey);
+  const relative = path.relative(normalizedRoot, target);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+
+  return target;
+}
+
 function localPath(objectKey: string) {
   const root = env.FAST_RENTAL_LOCAL_STORAGE_ROOT;
   if (!root) return null;
-  const safe = objectKey.replace(/\.\./g, '');
-  return path.join(root, safe);
+  return resolveSafeLocalPath(objectKey, root);
 }
 
 export function hasLocalStorageRoot() {

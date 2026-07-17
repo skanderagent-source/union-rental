@@ -3,6 +3,7 @@ export default {
   'nav.inventaire': 'Notre inventaire',
   'nav.about': 'Qui sommes-nous',
   'nav.contact': 'Nous contacter',
+  'nav.ariaLabel': 'Navigation principale',
   langBtn: 'EN',
   'hero.badge': 'Logements disponibles maintenant',
   'hero.title': 'Votre prochain<br>chez-vous à Montréal',
@@ -55,6 +56,7 @@ export default {
   'footer.singlekey': 'Vérification SingleKey',
   'footer.dossiers': 'Dossiers lun-ven',
   'footer.rights': 'Tous droits réservés',
+  'footer.ariaLabel': 'Pied de page',
   'inv.title': 'Notre inventaire',
   'inv.subtitleLoading': 'Des centaines de logements disponibles à Montréal et environs',
   'search.label': 'Recherche',
@@ -92,6 +94,11 @@ export default {
     "Notre processus est conçu pour être rapide, transparent et sécurisé. Dès votre première demande, un agent dédié vous accompagne jusqu'à la signature du bail.",
   'about.missionP3':
     "Que vous cherchiez un studio abordable à St-Michel ou un grand appartement familial à Outremont, nous avons le logement qu'il vous faut.",
+  'about.missionImgAlt': 'Salon lumineux dans un appartement du Grand Montréal',
+  'about.contactTitle': 'Nous joindre',
+  'about.contactText':
+    'Utilisez le formulaire de rappel ou de préqualification pour parler à un agent. Nous desservons le Grand Montréal en français et en anglais.',
+  'about.contactHours': 'Demandes traitées du lundi au vendredi.',
   'value1.title': 'Transparence',
   'value1.text':
     'Pas de frais cachés. Nos critères de sélection sont clairs dès le départ : revenu suffisant et absence de dossier au TAL.',
@@ -164,12 +171,33 @@ export default {
   'toast.badPhone': '⚠️ Numéro de téléphone invalide',
   'toast.badEmail': '⚠️ Adresse email invalide',
   'toast.badCreditScore': '⚠️ La cote de crédit doit être entre 300 et 900',
+  'toast.offline': '⚠️ Hors ligne — connexion requise pour envoyer le formulaire',
   'deeplink.gone':
     "Ce logement n'est plus disponible — contactez-nous pour des options similaires",
   'meta.title': 'LogiGo — Appartements à louer à Montréal',
+  'meta.home.title': 'Appartements à louer à Montréal',
+  'meta.home.description':
+    'Parcourez des appartements vérifiés dans le Grand Montréal. Inventaire à jour, demande de rappel en ligne.',
+  'meta.inventory.title': 'Inventaire — Appartements à louer',
+  'meta.inventory.description':
+    'Recherchez des appartements disponibles dans le Grand Montréal par quartier, taille et budget. Carte interactive et photos.',
+  'meta.inventory.filteredDescription':
+    'Résultats filtrés dans l’inventaire LogiGo. Affinez votre recherche ou parcourez tous les logements disponibles.',
+  'meta.about.title': 'Qui sommes-nous — LogiGo',
+  'meta.about.description':
+    'LogiGo simplifie la recherche d’appartements à Montréal avec un inventaire vérifié et un accompagnement par des agents.',
+  'meta.notfound.title': 'Page introuvable',
+  'meta.notfound.description': 'Cette page n’existe pas. Retournez à l’accueil LogiGo pour parcourir les logements disponibles dans le Grand Montréal.',
+  'meta.unavailable.title': 'Logement non disponible',
+  'meta.unavailable.description':
+    'Ce logement n’est plus disponible. Contactez LogiGo pour découvrir des options similaires à Montréal.',
   'map.approx': 'Position approximative',
   'pag.prev': 'Précédent',
   'pag.next': 'Suivant',
+  'pag.first': 'Première page',
+  'pag.ariaLabel': 'Pagination de l’inventaire',
+  'related.title': 'Logements similaires',
+  'toc.title': 'Sur cette page',
   'detail.back': "← Retour à l'inventaire",
   'detail.price': 'Loyer mensuel',
   'detail.size': 'Taille',
@@ -185,5 +213,9 @@ export default {
   'detail.nextMedia': 'Média suivant',
   'error.retry': 'Réessayer',
   'notfound.title': 'Page introuvable',
+  'notfound.message':
+    'Cette adresse n’existe pas ou a changé. Parcourez notre inventaire d’appartements dans le Grand Montréal.',
   'notfound.back': "Retour à l'accueil",
+  'notfound.browse': "Voir l'inventaire",
+  'notfound.about': 'Qui sommes-nous',
 } as Record<string, string>;

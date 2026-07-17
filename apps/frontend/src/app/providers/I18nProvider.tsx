@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { LANG_STORAGE_KEY } from '@union-rental/shared';
 import { dictionaries, type Lang } from '@/i18n';
+import { readStoredLang } from '@/lib/safeStorage';
 
 type I18nContextValue = {
   lang: Lang;
+  setLang: (lang: Lang) => void;
   t: (key: string) => string;
   toggleLang: () => void;
 };
@@ -11,10 +13,7 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => {
-    const stored = localStorage.getItem(LANG_STORAGE_KEY);
-    return stored === 'en' ? 'en' : 'fr';
-  });
+  const [lang, setLang] = useState<Lang>(() => readStoredLang());
 
   const t = useCallback(
     (key: string) => dictionaries[lang][key] ?? key,
@@ -22,19 +21,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleLang = useCallback(() => {
-    setLang((prev) => {
-      const next = prev === 'fr' ? 'en' : 'fr';
-      localStorage.setItem(LANG_STORAGE_KEY, next);
-      return next;
-    });
+    setLang((prev) => (prev === 'fr' ? 'en' : 'fr'));
   }, []);
 
   useEffect(() => {
-    document.documentElement.lang = lang;
-    document.title = t('meta.title');
-  }, [lang, t]);
+    document.documentElement.lang = lang === 'fr' ? 'fr-CA' : 'en-CA';
+  }, [lang]);
 
-  const value = useMemo(() => ({ lang, t, toggleLang }), [lang, t, toggleLang]);
+  const value = useMemo(
+    () => ({ lang, setLang, t, toggleLang }),
+    [lang, t, toggleLang],
+  );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

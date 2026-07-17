@@ -21,6 +21,8 @@
     "verify-env": "node scripts/verify-env.mjs",
     "smoke": "node scripts/smoke-api.mjs",
     "security-check": "node scripts/run-security-checklist.mjs",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "audit:deps": "npm audit --audit-level=high",
     "verify-db": "node scripts/verify-db.mjs",
     "verify-dns": "node scripts/verify-dns.mjs",
     "post-dns": "node scripts/post-dns-checklist.mjs",

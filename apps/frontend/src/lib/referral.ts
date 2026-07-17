@@ -1,15 +1,9 @@
 import { isValidReferralUsername } from '@union-rental/shared';
-import { REF_EXPIRY_MS, REF_STORAGE_KEY } from '@union-rental/shared';
-import { api } from './apiClient';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { publicApi } from './publicApi';
+import { writeStoredReferralAgentId } from './safeStorage';
 
 export function persistReferralAgentId(agentId: string) {
-  try {
-    localStorage.setItem(REF_STORAGE_KEY, JSON.stringify({ id: agentId, ts: Date.now() }));
-  } catch {
-    /* ignore */
-  }
+  writeStoredReferralAgentId(agentId);
 }
 
 export async function resolveReferralToken(token: string): Promise<string | null> {
@@ -17,7 +11,7 @@ export async function resolveReferralToken(token: string): Promise<string | null
   if (!trimmed || !isValidReferralUsername(trimmed)) return null;
 
   try {
-    const { agentId } = await api.get<{ agentId: string }>(`/api/public/referral/${encodeURIComponent(trimmed)}`);
+    const { agentId } = await publicApi.getReferral(trimmed);
     return agentId ?? null;
   } catch {
     return null;
@@ -37,17 +31,5 @@ export async function captureReferralFromSearch(search: URLSearchParams): Promis
   return { ref, listing };
 }
 
-export function getActiveReferral(): string | null {
-  try {
-    const raw = localStorage.getItem(REF_STORAGE_KEY);
-    if (!raw) return null;
-    const { id, ts } = JSON.parse(raw) as { id?: string; ts?: number };
-    if (!id || !UUID_RE.test(id) || Date.now() - (ts ?? 0) > REF_EXPIRY_MS) {
-      localStorage.removeItem(REF_STORAGE_KEY);
-      return null;
-    }
-    return id;
-  } catch {
-    return null;
-  }
-}
+export { readStoredReferralAgentId as getActiveReferral, removeAllowedStorageKey as clearStoredReferral } from './safeStorage';
+export { REF_STORAGE_KEY } from '@union-rental/shared';

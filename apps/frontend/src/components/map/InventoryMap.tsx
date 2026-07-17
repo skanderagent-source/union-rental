@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css';
 import { CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet';
 import type { MapListing } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';

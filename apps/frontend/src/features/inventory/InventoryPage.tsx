@@ -1,16 +1,31 @@
-import { useMemo, useState, useEffect } from 'react';
+import { lazy, Suspense, useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { withLocalePath } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
-import { api } from '@/lib/apiClient';
 import { fmtResultsCount } from '@/lib/format';
+import { parseInventoryFilters } from '@/lib/inventoryFilters';
+import { publicApi } from '@/lib/publicApi';
+import { isValidReferralUsername } from '@union-rental/shared';
 import { persistReferralAgentId } from '@/lib/referral';
+import { buildListingPath } from '@/lib/safeNavigation';
+import { inventoryPath, routes } from '@/lib/routes';
+import { buildInventorySeo, buildReferralInventorySeo } from '@/lib/seoMeta';
+import { PageSeo } from '@/components/seo/PageSeo';
+import { buildInventoryJsonLd, ogImageUrlForTemplate } from '@/lib/structuredData';
+import { OptimizedImage } from '@/components/common/OptimizedImage';
+import { STATIC_IMAGE_DIMENSIONS } from '@/lib/staticImageDimensions';
+import { SafeHtml } from '@/components/common/SafeHtml';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { ErrorState } from '@/components/common/ErrorState';
-import { InventoryMap } from '@/components/map/InventoryMap';
 import { Footer } from '@/components/layout/Footer';
 import heroInventaire from '@/assets/hero-inventaire.jpg';
-import type { PublicListing, MapListing, QuartierCount } from '@union-rental/shared';
+
+const InventoryMap = lazy(() =>
+  import('@/components/map/InventoryMap').then((m) => ({ default: m.InventoryMap })),
+);
+
+const MAP_TILE_ORIGIN = 'https://tile.openstreetmap.org';
 
 export function InventoryPage() {
   const { t, lang } = useI18n();
@@ -19,36 +34,37 @@ export function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    if (!referralUsername) return;
+    if (!referralUsername || !isValidReferralUsername(referralUsername)) return;
     let cancelled = false;
     void (async () => {
       try {
-        const { agentId } = await api.get<{ agentId: string }>(
-          `/api/public/referral/${encodeURIComponent(referralUsername)}`,
-        );
+        const { agentId } = await publicApi.getReferral(referralUsername);
         if (cancelled) return;
         persistReferralAgentId(agentId);
         const listingId = searchParams.get('listing');
-        if (listingId) {
-          navigate(`/logement/${listingId}`, { replace: true });
+        const listingPath = listingId ? buildListingPath(listingId, lang) : null;
+        if (listingPath) {
+          navigate(listingPath, { replace: true });
+        } else {
+          navigate(inventoryPath(searchParams.toString(), lang), { replace: true });
         }
       } catch {
-        /* unknown username — show inventory without referral */
+        navigate(inventoryPath(searchParams.toString()), { replace: true });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [referralUsername, searchParams, navigate]);
+  }, [referralUsername, searchParams, navigate, lang]);
 
-  const q = searchParams.get('q') ?? '';
-  const quartier = searchParams.get('quartier') ?? '';
-  const taille = searchParams.get('taille') ?? '';
-  const prixMax = searchParams.get('prixMax') ?? '';
-  const page = parseInt(searchParams.get('page') ?? '1', 10);
-  const vue = searchParams.get('vue') ?? 'grille';
+  const filters = useMemo(() => parseInventoryFilters(searchParams), [searchParams]);
+  const { q, quartier, taille, prixMax, page, vue } = filters;
 
   const [localQ, setLocalQ] = useState(q);
+
+  useEffect(() => {
+    setLocalQ(q);
+  }, [q]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -85,26 +101,41 @@ export function InventoryPage() {
 
   const listingsQuery = useQuery({
     queryKey: ['listings', queryString],
-    queryFn: () =>
-      api.get<{ items: PublicListing[]; total: number; page: number; pageSize: number }>(
-        `/api/public/listings?${queryString}`,
-      ),
+    queryFn: ({ signal }) => publicApi.getListings(queryString, { signal }),
   });
 
   const mapQuery = useQuery({
     queryKey: ['map', mapQueryString],
-    queryFn: () => api.get<MapListing[]>(`/api/public/listings/map?${mapQueryString}`),
+    queryFn: ({ signal }) => publicApi.getMapListings(mapQueryString, { signal }),
     enabled: vue === 'carte',
   });
 
   const quartiersQuery = useQuery({
     queryKey: ['quartiers'],
-    queryFn: () => api.get<QuartierCount[]>('/api/public/quartiers'),
+    queryFn: ({ signal }) => publicApi.getQuartiers({ signal }),
   });
 
   const totalPages = listingsQuery.data
     ? Math.max(1, Math.ceil(listingsQuery.data.total / listingsQuery.data.pageSize))
     : 1;
+
+  useEffect(() => {
+    if (listingsQuery.isLoading || listingsQuery.isError || !listingsQuery.data) return;
+    if (page <= totalPages) return;
+
+    const next = new URLSearchParams(searchParams);
+    if (totalPages <= 1) next.delete('page');
+    else next.set('page', String(totalPages));
+    setSearchParams(next, { replace: true });
+  }, [
+    page,
+    totalPages,
+    listingsQuery.isLoading,
+    listingsQuery.isError,
+    listingsQuery.data,
+    searchParams,
+    setSearchParams,
+  ]);
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -116,10 +147,68 @@ export function InventoryPage() {
 
   const topQuartiers = quartiersQuery.data?.slice(0, 10) ?? [];
 
+  const location = useLocation();
+
+  const seo = useMemo(() => {
+    const hasReferralSlug = Boolean(
+      referralUsername && isValidReferralUsername(referralUsername),
+    );
+    if (hasReferralSlug) {
+      return buildReferralInventorySeo(t);
+    }
+    return buildInventorySeo(lang, t, {
+      q,
+      quartier,
+      taille,
+      prixMax,
+      page,
+      vue,
+      hasReferralSlug: false,
+    });
+  }, [referralUsername, lang, t, q, quartier, taille, prixMax, page, vue]);
+
+  const jsonLd = useMemo(
+    () =>
+      buildInventoryJsonLd(lang, {
+        home: t('nav.accueil'),
+        inventory: t('nav.inventaire'),
+      }),
+    [lang, t],
+  );
+  const pageHref = (targetPage: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('page', String(targetPage));
+    return `${withLocalePath(lang, routes.inventory)}?${next.toString()}`;
+  };
+  const resourceHints = useMemo(
+    () => [
+      { rel: 'dns-prefetch' as const, href: MAP_TILE_ORIGIN },
+      { rel: 'preconnect' as const, href: MAP_TILE_ORIGIN, crossOrigin: 'anonymous' as const },
+    ],
+    [],
+  );
+
   return (
     <div className="app-page">
+      <PageSeo
+        title={seo.title}
+        description={seo.description}
+        pathname={location.pathname}
+        index={seo.index ?? true}
+        canonicalPath={seo.canonicalPath}
+        ogImage={ogImageUrlForTemplate('inventory')}
+        jsonLd={jsonLd}
+        resourceHints={resourceHints}
+      />
       <div className="inv-hero">
-        <img src={heroInventaire} alt="" />
+        <OptimizedImage
+          src={heroInventaire}
+          alt=""
+          decorative
+          width={STATIC_IMAGE_DIMENSIONS.heroInventaire.width}
+          height={STATIC_IMAGE_DIMENSIONS.heroInventaire.height}
+          priority
+        />
         <div className="inv-hero-overlay" />
         <div className="inv-hero-content">
           <h1>{t('inv.title')}</h1>
@@ -140,8 +229,9 @@ export function InventoryPage() {
               <label>{t('search.label')}</label>
               <input
                 value={localQ}
+                maxLength={120}
                 placeholder={t('search.placeholder')}
-                onChange={(e) => setLocalQ(e.target.value)}
+                onChange={(e) => setLocalQ(e.target.value.slice(0, 120))}
               />
             </div>
             <div className="s-field">
@@ -208,17 +298,17 @@ export function InventoryPage() {
 
         <div className="disclaimer-bar">
           <span>📋</span>
-          <span dangerouslySetInnerHTML={{ __html: t('disclaimer.html') }} />
+          <SafeHtml as="span" html={t('disclaimer.html')} />
         </div>
 
         <div className="results-header">
-          <div
+          <SafeHtml
             className="results-count"
-            dangerouslySetInnerHTML={{
-              __html: listingsQuery.data
+            html={
+              listingsQuery.data
                 ? fmtResultsCount(listingsQuery.data.total, lang)
-                : t('results.loading'),
-            }}
+                : t('results.loading')
+            }
           />
           <div className="view-toggle">
             <button
@@ -246,7 +336,15 @@ export function InventoryPage() {
           ) : mapQuery.isError ? (
             <ErrorState message={t('error.loadFailed')} onRetry={() => mapQuery.refetch()} />
           ) : (
-            <InventoryMap listings={mapQuery.data ?? []} />
+            <Suspense
+              fallback={
+                <div className="loading-wrap">
+                  <div className="spinner" />
+                </div>
+              }
+            >
+              <InventoryMap listings={mapQuery.data ?? []} />
+            </Suspense>
           )
         ) : (
           <>
@@ -263,10 +361,7 @@ export function InventoryPage() {
                 />
               )}
               {!listingsQuery.isLoading && listingsQuery.data?.items.length === 0 && (
-                <div
-                  className="empty-state"
-                  dangerouslySetInnerHTML={{ __html: t('empty.noResultsHtml') }}
-                />
+                <SafeHtml className="empty-state" html={t('empty.noResultsHtml')} />
               )}
               {listingsQuery.data && listingsQuery.data.items.length > 0 && (
                 <div className="listings-grid">
@@ -274,31 +369,37 @@ export function InventoryPage() {
                     <ListingCard
                       key={listing.id}
                       listing={listing}
-                      onNavigate={() => navigate(`/logement/${listing.id}`)}
+                      onNavigate={() => {
+                        const path = buildListingPath(listing.id, lang);
+                        if (path) navigate(path);
+                      }}
                     />
                   ))}
                 </div>
               )}
             </div>
-            <div className="pagination">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => updateParam('page', String(page - 1))}
-              >
-                {t('pag.prev')}
-              </button>
+            <nav className="pagination" aria-label={t('pag.ariaLabel')}>
+              {page > 1 ? (
+                <Link to={pageHref(page - 1)}>{t('pag.prev')}</Link>
+              ) : (
+                <span className="pagination-disabled">{t('pag.prev')}</span>
+              )}
               <span>
-                {page} / {totalPages}
+                {page > 1 ? (
+                  <Link to={pageHref(1)} aria-label={t('pag.first')}>
+                    {page}
+                  </Link>
+                ) : (
+                  page
+                )}{' '}
+                / {totalPages}
               </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => updateParam('page', String(page + 1))}
-              >
-                {t('pag.next')}
-              </button>
-            </div>
+              {page < totalPages ? (
+                <Link to={pageHref(page + 1)}>{t('pag.next')}</Link>
+              ) : (
+                <span className="pagination-disabled">{t('pag.next')}</span>
+              )}
+            </nav>
           </>
         )}
       </div>

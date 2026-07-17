@@ -1,5 +1,14 @@
 import { Router } from 'express';
-import { publicListingsQuerySchema, createLeadSchema } from '@union-rental/shared';
+import {
+  publicListingsQuerySchema,
+  publicListingsMapQuerySchema,
+  createLeadSchema,
+  listingIdParamSchema,
+  mediaIdParamSchema,
+  referralSlugParamSchema,
+  mediaObjectQuerySchema,
+} from '@union-rental/shared';
+import { leadsLimiter } from '../config/rateLimits.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
@@ -15,17 +24,14 @@ import { createPublicLead } from '../modules/leads/leads.service.js';
 import { resolveReferralSlug } from '../modules/referral/referral.service.js';
 import type { PublicListingsQuery } from '@union-rental/shared';
 
-function routeParam(value: string | string[] | undefined): string {
-  if (Array.isArray(value)) return value[0] ?? '';
-  return value ?? '';
-}
-
 export const listingsRouter = Router();
 
 listingsRouter.get(
   '/referral/:slug',
+  validateRequest(referralSlugParamSchema, 'params'),
   asyncHandler(async (req, res) => {
-    const data = await resolveReferralSlug(routeParam(req.params.slug));
+    const { slug } = req.validatedParams as { slug: string };
+    const data = await resolveReferralSlug(slug);
     res.json({ data });
   }),
 );
@@ -42,7 +48,7 @@ listingsRouter.get(
 
 listingsRouter.get(
   '/listings/map',
-  validateRequest(publicListingsQuerySchema.omit({ page: true, pageSize: true }), 'query'),
+  validateRequest(publicListingsMapQuerySchema, 'query'),
   asyncHandler(async (req, res) => {
     const params = req.validatedQuery as Omit<PublicListingsQuery, 'page' | 'pageSize'>;
     const data = await listMapListings(params);
@@ -52,8 +58,10 @@ listingsRouter.get(
 
 listingsRouter.get(
   '/listings/:id',
+  validateRequest(listingIdParamSchema, 'params'),
   asyncHandler(async (req, res) => {
-    const data = await getPublicListingById(routeParam(req.params.id));
+    const { id } = req.validatedParams as { id: string };
+    const data = await getPublicListingById(id);
     res.json({ data });
   }),
 );
@@ -76,18 +84,19 @@ listingsRouter.get(
 
 listingsRouter.get(
   '/media/object',
+  validateRequest(mediaObjectQuerySchema, 'query'),
   asyncHandler(async (req, res) => {
-    const objectKey = String(req.query.key ?? '');
-    const inline = req.query.inline !== '0';
-    const { stream, mimeType, filename, inline: serveInline } = await servePublicMediaObject(
-      objectKey,
-      inline,
+    const { key, inline } = req.validatedQuery as { key: string; inline?: '0' | '1' };
+    const serveInline = inline !== '0';
+    const { stream, mimeType, filename, inline: inlineDisposition } = await servePublicMediaObject(
+      key,
+      serveInline,
     );
     const safe = filename.replace(/[^\w.\- ]/g, '_');
     res.setHeader('Content-Type', mimeType);
     res.setHeader(
       'Content-Disposition',
-      serveInline ? 'inline' : `attachment; filename="${safe}"`,
+      inlineDisposition ? 'inline' : `attachment; filename="${safe}"`,
     );
     stream.pipe(res);
   }),
@@ -95,19 +104,23 @@ listingsRouter.get(
 
 listingsRouter.get(
   '/media/:mediaId/download-url',
+  validateRequest(mediaIdParamSchema, 'params'),
   asyncHandler(async (req, res) => {
-    const data = await getMediaDownloadUrl(routeParam(req.params.mediaId));
+    const { mediaId } = req.validatedParams as { mediaId: string };
+    const data = await getMediaDownloadUrl(mediaId);
     res.json({ data });
   }),
 );
 
 export const leadsRouter = Router();
 
+leadsRouter.use(leadsLimiter);
+
 leadsRouter.post(
   '/leads',
   validateRequest(createLeadSchema),
   asyncHandler(async (req, res) => {
-    const data = await createPublicLead(req.body);
+    const data = await createPublicLead(req.body, req);
     res.status(201).json({ data });
   }),
 );

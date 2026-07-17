@@ -2,6 +2,8 @@ import { SIZE_LABELS, type PublicListing } from '@union-rental/shared';
 import { useI18n } from '@/app/providers/I18nProvider';
 import { useContactModal } from '@/app/providers/ContactModalProvider';
 import { fmtPriceMonth } from '@/lib/format';
+import { STATIC_IMAGE_DIMENSIONS } from '@/lib/staticImageDimensions';
+import { SafeImage, SafeVideo } from '@/components/common/SafeMedia';
 
 type Props = {
   listing: PublicListing;
@@ -37,10 +39,17 @@ export function ListingCard({ listing, onNavigate, compact }: Props) {
               <span className="listing-photo-play" aria-hidden="true">
                 ▶
               </span>
-              <video src={listing.thumbnailUrl} preload="metadata" muted playsInline />
+              <SafeVideo src={listing.thumbnailUrl} preload="metadata" muted playsInline />
             </span>
           ) : (
-            <img src={listing.thumbnailUrl} alt={listing.adresse} loading="lazy" />
+            <SafeImage
+              src={listing.thumbnailUrl}
+              alt={listing.adresse}
+              loading="lazy"
+              width={STATIC_IMAGE_DIMENSIONS.listingThumb.width}
+              height={STATIC_IMAGE_DIMENSIONS.listingThumb.height}
+              sizes="(max-width: 821px) 100vw, 320px"
+            />
           )
         ) : (
           <div className="photo-ph">

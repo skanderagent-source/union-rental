@@ -1,13 +1,28 @@
 # Union Rental API — append to /etc/caddy/Caddyfile on the shared VPS.
 # Fast Rental's block on port 4000 stays untouched.
+# Caddy automatically redirects HTTP to HTTPS for this site block.
+# With TLS enabled, Caddy serves HTTP/2 by default and HTTP/3 (QUIC) when supported by the client.
 
 api.YOUR_UNION_DOMAIN {
+  tls {
+    protocols tls1.2 tls1.3
+  }
+  # zstd preferred, gzip fallback — Caddy negotiates via Accept-Encoding.
   encode zstd gzip
-  reverse_proxy 127.0.0.1:4001
+  reverse_proxy 127.0.0.1:4001 {
+    transport http {
+      dial_timeout 5s
+      read_timeout 30s
+      write_timeout 30s
+    }
+  }
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options "nosniff"
     X-Frame-Options "DENY"
     Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+    -Server
   }
 }
