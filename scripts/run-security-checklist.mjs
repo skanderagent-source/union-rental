@@ -78,6 +78,11 @@ if (vercelHeaders.some((h) => h.key === 'Content-Security-Policy' && /script-src
 } else {
   fail('Vercel CSP must use script-src self without unsafe-inline');
 }
+if (vercelHeaders.some((h) => h.key === 'Content-Security-Policy' && /media-src[^;]*https:/.test(h.value))) {
+  ok('Vercel CSP allows external video sources (media-src https:)');
+} else {
+  fail('Vercel CSP must include media-src with https: for R2 listing videos');
+}
 
 if (appTs.includes('requestNormalization')) ok('Request normalization middleware present');
 else fail('Request normalization middleware missing');

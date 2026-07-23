@@ -14,7 +14,11 @@ export const r2 = new S3Client({
 export function signViewUrl(objectKey: string): Promise<string> {
   return getSignedUrl(
     r2,
-    new GetObjectCommand({ Bucket: env.R2_BUCKET, Key: objectKey }),
+    new GetObjectCommand({
+      Bucket: env.R2_BUCKET,
+      Key: objectKey,
+      ResponseContentDisposition: 'inline',
+    }),
     { expiresIn: env.R2_SIGNED_DOWNLOAD_EXPIRES_SECONDS },
   );
 }
